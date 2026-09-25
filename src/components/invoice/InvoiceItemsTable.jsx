@@ -205,7 +205,7 @@ export default function InvoiceItemsTable({ onPrint }) {
       </div>
 
       {/* ── Invoice Details: 3-Column Layout ── */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 mb-5">
         {/* Notes & Terms */}
         <div className="flex flex-col">
           <div className="mb-3">

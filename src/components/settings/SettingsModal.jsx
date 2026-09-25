@@ -108,9 +108,7 @@ export default function SettingsModal({ onClose }) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Australia">Australia</SelectItem>
                   <SelectItem value="Pakistan">Pakistan</SelectItem>
-                  <SelectItem value="USA">USA</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -169,38 +169,38 @@ export default function BillingInfo({ invoice = {} }) {
               )}
             </h2>
 
-            {invoice.phoneNo && (
-              <p data-mb-gap data-lh className="mb-0 text-xs text-black">
-                <span className="font-bold">Phone No:</span> {invoice.phoneNo}
-              </p>
+            {invoice.customer && (
+              <div>
+                <h2
+                  data-mb-gap
+                  data-lh
+                  className="mb-0 mt-2 text-xs leading-4 text-slate-900"
+                >
+                  <span className="font-bold">Contact Person:</span>{" "}
+                  {invoice.customer}
+                </h2>
+              </div>
             )}
 
-            {invoice.businessAddress && (
+            {invoice.phoneNo && (
               <p data-mb-gap data-lh className="mb-0 text-xs text-black">
-                <span className="font-bold">Address:</span>{" "}
-                {invoice.businessAddress}
+                <span className="font-bold">Business Phone No:</span> {invoice.phoneNo}
               </p>
             )}
 
             {invoice.businessEmail && (
               <p data-mb-gap data-lh className="mb-0 text-xs text-black">
-                <span className="font-bold">Email:</span> {invoice.businessEmail}
+                <span className="font-bold">Business Email:</span> {invoice.businessEmail}
+              </p>
+            )}
+
+            {invoice.businessAddress && (
+              <p data-mb-gap data-lh className="mb-0 text-xs text-black">
+                <span className="font-bold">Business Address:</span>{" "}
+                {invoice.businessAddress}
               </p>
             )}
           </div>
-
-          {invoice.customer && (
-            <div>
-              <h2
-                data-mb-gap
-                data-lh
-                className="mb-0 mt-2 text-xs leading-4 text-slate-900"
-              >
-                <span className="font-bold">Contact Person:</span>{" "}
-                {invoice.customer}
-              </h2>
-            </div>
-          )}
         </div>
 
         {/* Right — Payment Information (DO NOT MODIFY) */}

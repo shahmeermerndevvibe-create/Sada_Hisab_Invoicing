@@ -6,7 +6,7 @@ import { invoiceItemModel } from "@/models/invoiceItemModel";
 import { useSettingsStore } from "@/store/settingsStore";
 import { DEFAULT_INVOICE } from "@/constants/invoiceDefaults";
 
-const defaultCountry = "Australia";
+const defaultCountry = "Pakistan";
 
 const countryFieldsFromSettings = (country) => {
   const cs = useSettingsStore.getState().byCountry[country] || {};

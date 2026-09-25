@@ -75,6 +75,9 @@ export default function BillingSummary({
               >
                 <span className="text-[12px] font-bold leading-none">
                   {label}
+                  {row.mode === "percent" && Number(row.value) > 0
+                    ? ` (${formatCurrency(Number(row.value))}%)`
+                    : ""}
                 </span>
                 <span className="whitespace-nowrap text-[15px] font-bold leading-none">
                   {invoice.currency.symbol} {formatCurrency(amount)}

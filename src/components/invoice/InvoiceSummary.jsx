@@ -171,8 +171,14 @@ function AdjustmentRow({
               max={isPercent ? 100 : safeMax}
               value={effectiveValue}
               onChange={(e) => handleValueChange(e.target.value)}
+              onFocus={(e) => {
+                const input = e.target;
+                if (input.value === "0" || input.value === "0.00") {
+                  input.select();
+                }
+              }}
               aria-label={`${label} value`}
-              className="h-8 w-24 border-slate-200 bg-white pr-6 text-right text-sm shadow-none focus-visible:ring-1 focus-visible:ring-slate-300"
+              className="h-8 w-32 border-slate-200 bg-white pr-6 text-right text-sm shadow-none focus-visible:ring-1 focus-visible:ring-slate-300"
             />
             <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-400">
               {isPercent ? "%" : symbol}

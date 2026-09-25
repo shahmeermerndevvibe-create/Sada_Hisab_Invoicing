@@ -107,7 +107,7 @@ export default function CustomerSection() {
           <div>
             <Label className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-500">
               <Phone size={13} className="text-slate-400" />
-              Phone Number
+              Business Phone Number
             </Label>
             <Input
               type="tel"

@@ -2,35 +2,11 @@ import { create } from "zustand";
 import { settingsService } from "@/services/InvoiceService";
 
 const COUNTRY_PLACEHOLDERS = {
-  Australia: {
-    phoneNo: "+61 421 702 706",
-    website: "www.devvibe.com",
-    location: "10 Leo Ave, Melbourne, Australia, 3029",
-    businessNumber: "60733547866",
-
-    signatureName: "Ajmal Jillani",
-    signatureTitle: "COO - DevVibe",
-
-    thankYouText: "THANK YOU FOR YOUR PAYMENT",
-  },
-
   Pakistan: {
     phoneNo: "+92 300 1234567",
     website: "www.devvibe.com",
     location: "5 Main Blvd, Karachi, Pakistan",
     businessNumber: "123456789X",
-
-    signatureName: "Ajmal Jillani",
-    signatureTitle: "COO - DevVibe",
-
-    thankYouText: "THANK YOU FOR YOUR PAYMENT",
-  },
-
-  USA: {
-    phoneNo: "+1 212 555 0198",
-    website: "www.devvibe.com",
-    location: "123 Broadway, New York, NY 10006",
-    businessNumber: "12-3456789",
 
     signatureName: "Ajmal Jillani",
     signatureTitle: "COO - DevVibe",
@@ -57,7 +33,8 @@ export const useSettingsStore = create((set, get) => ({
     try {
       const data = await settingsService.getSettings();
       if (data) {
-        const { updatedAt, ...settings } = data;
+        const settings = { ...data };
+        delete settings.updatedAt;
         let signatureUrl = settings.signatureUrl || "";
         let signaturePublicId = settings.signaturePublicId || "";
 
@@ -83,7 +60,8 @@ export const useSettingsStore = create((set, get) => ({
             loaded: true,
           });
         } else {
-          const { updatedAt: _, ...flat } = data;
+          const flat = { ...data };
+          delete flat.updatedAt;
           if (flat.phoneNo || flat.website || flat.location) {
             const { signatureUrl: flatSignatureUrl, signaturePublicId: flatSignaturePublicId, ...rest } = flat;
             const merged = buildDefaultByCountry();

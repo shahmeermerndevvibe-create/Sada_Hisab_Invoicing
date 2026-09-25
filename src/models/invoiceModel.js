@@ -24,7 +24,7 @@ export const invoiceModel = {
     symbol: "Rs",
   },
 
-  country: "Australia",
+  country: "Pakistan",
   businessNumber: "",
 
   subtotal: 0,

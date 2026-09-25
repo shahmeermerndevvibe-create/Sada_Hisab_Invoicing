@@ -1,12 +1,12 @@
 const businessLabel = {
-  Australia: "ABN",
   Pakistan: "SECP",
+  Australia: "ABN",
   USA: "Business #",
 };
 
 export default function Logo({ invoice }) {
-  const country = invoice?.country || "Australia";
-  const label = businessLabel[country] || "ABN";
+  const country = invoice?.country || "Pakistan";
+  const label = businessLabel[country] || "SECP";
   const number = invoice?.businessNumber || "";
 
   return (
