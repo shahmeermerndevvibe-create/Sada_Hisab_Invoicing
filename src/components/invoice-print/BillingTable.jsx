@@ -8,17 +8,26 @@ import {
 } from "@/components/ui/table";
 import { formatCurrency, calculateItemRow } from "@/utils/invoiceUtils";
 import BillingTableTitle from "./BillingTableTitle";
+import { TABLE_DENSITY_TIERS, resolveTableDensity } from "./tableDensity";
 
-const BillingTable = ({ items = [], invoice = {}, startIndex = 0, allItems }) => {
+/**
+ * `density` is an optional override so the print DOM renders exactly the
+ * density the pagination measurement was taken at. Without it the table keeps
+ * its original count-based behaviour.
+ */
+const BillingTable = ({ items = [], invoice = {}, startIndex = 0, allItems, isLastPage = false, density }) => {
   const minRows = 1;
-  const emptyRows = Math.max(0, minRows - items.length);
+  const emptyRows = isLastPage ? Math.max(0, minRows - items.length) : 0;
 
   const itemsForSizing = allItems?.length ? allItems : items;
   const showDiscount = itemsForSizing.some((item) => Number(item.discount) > 0);
 
   const totalRenderedRows = itemsForSizing.length;
-  const compact = totalRenderedRows >= 5;
-  const veryCompact = totalRenderedRows >= 8;
+  const activeDensity = TABLE_DENSITY_TIERS.includes(density)
+    ? density
+    : resolveTableDensity(totalRenderedRows);
+  const veryCompact = activeDensity === "veryCompact";
+  const compact = veryCompact || activeDensity === "compact";
 
   const cellPad = veryCompact ? "py-1" : compact ? "py-1.5" : "py-2.5";
 

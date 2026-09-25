@@ -6,152 +6,33 @@ import BillingInfo from "./BillingInfo";
 import BillingTable from "./BillingTable";
 import BillingSummary from "./BillingSummary";
 import BillingFooter from "./BillingFooter";
+import { TABLE_DENSITY_TIERS } from "./tableDensity";
+import {
+  SUMMARY_WRAPPER_CLASS,
+  SUMMARY_SPACING_TIERS,
+  buildPagesFromMeasurements,
+  measureHeights,
+} from "./pagination";
 
 const MM_PX = 96 / 25.4;
 const PAGE_H = Math.round(297 * MM_PX);
 const FOOTER_H = Math.round(48 * MM_PX);
 const SAFE_PX = 4;
-const SUMMARY_WRAPPER_PT = 16;
-const SUMMARY_WRAPPER_PB = 8;
 
-function buildPagesFromMeasurements(
-  items,
-  contentHeight,
-  headerHeight,
-  billingInfoHeight,
-  rowHeights,
-  tableOverhead,
-  bsHeight,
-  notesHeight,
-) {
-  const getEffectiveBsHeight = (hasItems) =>
-    bsHeight + (hasItems ? SUMMARY_WRAPPER_PT : 64) + SUMMARY_WRAPPER_PB;
-
-  if (items.length === 0) {
-    return [{ items: [], showBillingSummary: true }];
-  }
-
-  const totalItemHeight = rowHeights.reduce((a, b) => a + b, 0);
-
-  const baseContentHeight = contentHeight;
-  const firstPageFixed = headerHeight + billingInfoHeight + tableOverhead;
-  const interiorPageFixed = headerHeight + tableOverhead + 12;
-
-  const allOnOne = firstPageFixed + totalItemHeight + getEffectiveBsHeight(true) + notesHeight;
-  if (allOnOne <= baseContentHeight) {
-    return [{ items, showBillingSummary: true }];
-  }
-
-  const getPageBudget = (isFirstPage, showBillingSummary, hasItemsOnPage) => {
-    let budget = baseContentHeight - (isFirstPage ? firstPageFixed : interiorPageFixed);
-    if (showBillingSummary) budget -= getEffectiveBsHeight(hasItemsOnPage);
-    return budget;
+/**
+ * Off-screen copy of everything pagination needs to measure. It renders one
+ * BillingTable PER density tier and one BillingSummary PER spacing tier, so
+ * `measureHeights()` returns real heights for every candidate combination and
+ * the density the ladder picks is the density that gets printed.
+ */
+export function MeasureNodes({ invoice, items, allItems, total }) {
+  const summaryProps = {
+    invoice,
+    items: allItems || items,
+    total,
+    notesPosition: "inline",
   };
 
-  const pages = [];
-  let start = 0;
-
-  while (start < items.length) {
-    const isFirstPage = pages.length === 0;
-    const pageBudget = getPageBudget(isFirstPage, false, true);
-
-    const page = [];
-    let used = 0;
-
-    while (start < items.length) {
-      const h = rowHeights[start];
-
-      if (used + h > pageBudget && page.length > 0) {
-        break;
-      }
-
-      page.push(items[start]);
-      used += h;
-      start++;
-    }
-
-    if (page.length === 0) {
-      page.push(items[start]);
-      used += rowHeights[start];
-      start++;
-    }
-
-    pages.push({ items: page, usedHeight: used });
-  }
-
-  const lastPage = pages[pages.length - 1];
-  const isSinglePage = pages.length === 1;
-  const lastPageHasItems = lastPage.items.length > 0;
-  const lastPageBudgetWithSummary = getPageBudget(isSinglePage, true, lastPageHasItems);
-  const lastPageItemsHeight = lastPage.usedHeight;
-
-  const canFitSummaryOnLast = lastPageItemsHeight + getEffectiveBsHeight(lastPageHasItems) <= lastPageBudgetWithSummary;
-
-  if (canFitSummaryOnLast) {
-    lastPage.showBillingSummary = true;
-  } else {
-    pages.push({ items: [], showBillingSummary: true, usedHeight: 0 });
-  }
-
-  const chunks = pages.map((p) => ({
-    items: p.items,
-    showBillingSummary: p.showBillingSummary || false,
-  }));
-
-  console.log("[Pagination Chunks]", {
-    baseContentHeight,
-    firstPageFixed,
-    interiorPageFixed,
-    totalItemHeight,
-    bsHeight,
-    effectiveBsHeightWithItems: getEffectiveBsHeight(true),
-    effectiveBsHeightWithoutItems: getEffectiveBsHeight(false),
-    numChunks: chunks.length,
-    chunks: chunks.map((c, i) => ({
-      page: i + 1,
-      itemCount: c.items.length,
-      showBS: c.showBillingSummary,
-    })),
-  });
-
-  return chunks;
-}
-
-function measureHeights(container) {
-  const header = container.querySelector("[data-meas-header]");
-  const billingInfo = container.querySelector("[data-meas-billing]");
-  const itemsSection = container.querySelector("[data-meas-items]");
-  const notes = container.querySelector("[data-meas-notes]");
-
-  const headerHeight = header?.offsetHeight || 0;
-  const billingInfoHeight = billingInfo?.offsetHeight || 0;
-  const totalItemsHeight = itemsSection?.offsetHeight || 0;
-  const table =
-    itemsSection?.querySelector("table") ||
-    itemsSection?.querySelector("[role='table']");
-  const tbody =
-    table?.querySelector("tbody") || table?.querySelector("[role='rowgroup']");
-  const rowElements =
-    tbody?.querySelectorAll(":scope > tr, :scope > [role='row']") || [];
-  const rowHeights = Array.from(rowElements).map((el) => el.offsetHeight);
-  const rowSum = rowHeights.reduce((a, b) => a + b, 0);
-  const tableOverheadH = totalItemsHeight - rowSum;
-  const notesHeight = notes?.offsetHeight || 0;
-
-  const bsNode = container.querySelector("[data-meas-bs]");
-  const bsHeight = bsNode?.offsetHeight || 0;
-
-  return {
-    headerHeight,
-    billingInfoHeight,
-    rowHeights,
-    tableOverheadH: Math.max(0, tableOverheadH),
-    bsHeight,
-    notesHeight,
-  };
-}
-
-function renderMeasureNodes(invoice, items, allItems, total) {
   return (
     <>
       <div data-meas-header>
@@ -167,17 +48,23 @@ function renderMeasureNodes(invoice, items, allItems, total) {
         <BillingInfo invoice={invoice} />
       </div>
       <div data-meas-items>
-        <BillingTable items={items} invoice={invoice} />
+        {TABLE_DENSITY_TIERS.map((density) => (
+          <div key={density} data-meas-table data-density={density}>
+            <BillingTable
+              items={items}
+              invoice={invoice}
+              allItems={allItems || items}
+              density={density}
+            />
+          </div>
+        ))}
       </div>
       <div data-meas-summary>
-        <div data-meas-bs>
-          <BillingSummary
-            invoice={invoice}
-            items={allItems || items}
-            total={total}
-            notesPosition="inline"
-          />
-        </div>
+        {SUMMARY_SPACING_TIERS.map((tier) => (
+          <div key={tier} data-meas-bs data-spacing={tier}>
+            <BillingSummary {...summaryProps} spacing={tier} />
+          </div>
+        ))}
       </div>
     </>
   );
@@ -219,30 +106,19 @@ const InvoicePrint = ({
       const m = measureHeights(root);
       const contentHeight = PAGE_H - FOOTER_H - SAFE_PX;
 
-      const totalItemHeight = m.rowHeights.reduce((a, b) => a + b, 0);
-      const firstBudget = contentHeight - m.headerHeight - m.billingInfoHeight - m.tableOverheadH;
-      console.log("[Pagination]", {
-        PAGE_H, FOOTER_H, SAFE_PX, contentHeight,
-        headerHeight: m.headerHeight,
-        billingInfoHeight: m.billingInfoHeight,
-        tableOverheadH: m.tableOverheadH,
-        rowHeights: m.rowHeights,
-        totalItemHeight,
-        bsHeight: m.bsHeight,
-        notesHeight: m.notesHeight,
-        firstBudget,
-        itemsCount: items.length,
-      });
+      // The density ladder in buildPagesFromMeasurements now always starts from
+      // "normal" and tests all three tiers, so we pass "normal" as the baseline.
+      const autoDensity = "normal";
 
       const chunks = buildPagesFromMeasurements(
         items,
         contentHeight,
         m.headerHeight,
         m.billingInfoHeight,
-        m.rowHeights,
-        m.tableOverheadH,
-        m.bsHeight,
+        m.densityMeasurements,
+        m.summarySectionHeights,
         m.notesHeight,
+        autoDensity,
       );
       setPageChunks(chunks);
     };
@@ -282,7 +158,7 @@ const InvoicePrint = ({
       cancelled = true;
       observer.disconnect();
     };
-  }, [items, invoice, onReady]);
+  }, [items, allItems, invoice, onReady]);
 
   // Signal readiness only after the paginated DOM has been committed by React.
   // `useLayoutEffect` runs after DOM mutation, so `onReady` can never fire while
@@ -312,6 +188,8 @@ const InvoicePrint = ({
             items={chunk.items}
             startIndex={pageStarts[index]}
             showBillingSummary={chunk.showBillingSummary}
+            summarySpacing={chunk.summarySpacing || "normal"}
+            density={chunk.density}
             allItems={allItems || items}
             isFirstPage={index === 0}
             isLastPage={index === pages.length - 1}
@@ -324,7 +202,12 @@ const InvoicePrint = ({
       ))}
       {createPortal(
         <div ref={measRef} style={MEAS_STYLE}>
-          {renderMeasureNodes(invoice, items, allItems, total)}
+          <MeasureNodes
+            invoice={invoice}
+            items={items}
+            allItems={allItems}
+            total={total}
+          />
         </div>,
         document.body,
       )}
@@ -332,11 +215,13 @@ const InvoicePrint = ({
   );
 };
 
-const BillingTableSection = ({
+export const BillingTableSection = ({
   invoice,
   items,
   startIndex = 0,
   showBillingSummary,
+  summarySpacing = "normal",
+  density,
   allItems,
   isFirstPage,
   isLastPage,
@@ -345,6 +230,11 @@ const BillingTableSection = ({
   total,
   balanceDue,
 }) => {
+  const summaryWrapperClass =
+    items.length === 0
+      ? "pt-16 pb-2"
+      : SUMMARY_WRAPPER_CLASS[summarySpacing] || SUMMARY_WRAPPER_CLASS.normal;
+
   return (
     <div
       className="invoice-page bg-white flex flex-col"
@@ -379,19 +269,20 @@ const BillingTableSection = ({
             invoice={invoice}
             startIndex={startIndex}
             allItems={allItems}
+            isLastPage={isLastPage}
+            density={density}
           />
         </div>
       )}
 
       {showBillingSummary && (
-        <div
-          className={`shrink-0 ${items.length === 0 ? "pt-16" : "pt-4"} pb-2`}
-        >
+        <div className={`shrink-0 ${summaryWrapperClass}`}>
           <BillingSummary
             invoice={invoice}
             items={allItems || items}
             total={total}
             notesPosition="inline"
+            spacing={summarySpacing}
           />
         </div>
       )}
