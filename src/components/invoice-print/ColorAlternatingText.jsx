@@ -2,7 +2,7 @@ const colors = ["text-slate-800", "text-[#4dc2fb]"];
 
 export default function ColorAlternatingText({ text, className = "" }) {
   const words = text.split(/(\s+)/);
-  let colorIndex = 0;
+  let firstWord = true;
 
   return (
     <span className={className}>
@@ -10,12 +10,17 @@ export default function ColorAlternatingText({ text, className = "" }) {
         if (/^\s+$/.test(segment)) {
           return <span key={i}>{segment}</span>;
         }
+
         const el = (
-          <span key={i} className={colors[colorIndex % 2]}>
+          <span
+            key={i}
+            className={firstWord ? "text-slate-800" : "text-[#4dc2fb]"}
+          >
             {segment}
           </span>
         );
-        colorIndex++;
+
+        firstWord = false;
         return el;
       })}
     </span>

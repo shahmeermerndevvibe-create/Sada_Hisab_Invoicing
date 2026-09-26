@@ -69,8 +69,6 @@ function rebalanceLastPageForSummary(
     let lastPageUsed = lastPage.usedHeight;
     let prevPageUsed = prevPage.usedHeight;
     let lastPageStart = lastPageStartIdx;
-    let prevPageStart = prevPageStartIdx;
-
     // Progressively move rows from last page to previous page
     while (lastPageItems.length > 1) { // Keep at least 1 item on last page
       // Check if summary fits NOW with current distribution
@@ -104,13 +102,11 @@ function rebalanceLastPageForSummary(
         // Can't move more without overflowing previous page - undo and stop
         lastPageItems.unshift(movedItem);
         lastPageUsed += movedHeight;
-        lastPageStart--;
         break;
       }
 
       prevPageItems.unshift(movedItem);
       prevPageUsed += movedHeight;
-      prevPageStart--;
     }
 
     // Final check after moving all possible rows for this tier
@@ -176,7 +172,6 @@ export function buildPagesFromMeasurements(
   notesHeight,
   autoDensity = "normal",
 ) {
-  const bsHeight = summarySectionHeights.normal;
 
   /**
    * Height the Billing Summary occupies once rendered on a page.

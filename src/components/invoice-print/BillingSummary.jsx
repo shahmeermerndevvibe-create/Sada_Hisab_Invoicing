@@ -28,11 +28,8 @@ export default function BillingSummary({
   notesPosition = "inline",
   spacing = "normal",
 }) {
-  const {
-    subtotal,
-    itemDiscountsTotal,
-    adjustmentRowAmounts,
-  } = calculateInvoiceTotals(items, invoice);
+  const { subtotal, itemDiscountsTotal, adjustmentRowAmounts } =
+    calculateInvoiceTotals(items, invoice);
   const adjustmentRows = getSequentialAdjustmentRows(invoice);
   const hasItemDiscounts = itemDiscountsTotal > 0;
 
@@ -72,7 +69,9 @@ export default function BillingSummary({
         <div className="ml-auto mt-4 w-full max-w-[320px] shrink-0">
           {/* Subtotal */}
           <div className="mb-2 flex w-full items-center justify-between rounded bg-gradient-to-r from-[#0F3476] to-[#087FE3] px-4 py-2.5 text-white">
-            <span className="text-[14px] font-bold leading-none">Subtotal:</span>
+            <span className="text-[14px] font-bold leading-none">
+              Subtotal:
+            </span>
             <span className="whitespace-nowrap text-[16px] font-bold leading-none">
               {invoice.currency.symbol} {formatCurrency(subtotal)}
             </span>
@@ -80,8 +79,12 @@ export default function BillingSummary({
 
           {hasItemDiscounts && (
             <div className="mb-2 flex w-full items-center justify-between rounded bg-gradient-to-r from-[#0F3476] to-[#087FE3] px-4 py-2.5 text-[11px] text-white">
-              <span className="text-[12px] font-bold leading-none">{invoice.itemDiscountLabel || "Item Discounts"}</span>
-              <span className="whitespace-nowrap text-[15px] font-bold leading-none">{invoice.currency.symbol} {formatCurrency(itemDiscountsTotal)}</span>
+              <span className="text-[12px] font-bold leading-none">
+                {invoice.itemDiscountLabel || "Item Discounts"}
+              </span>
+              <span className="whitespace-nowrap text-[15px] font-bold leading-none">
+                {invoice.currency.symbol} {formatCurrency(itemDiscountsTotal)}
+              </span>
             </div>
           )}
           {adjustmentRows.map((row, idx) => {
@@ -100,10 +103,11 @@ export default function BillingSummary({
                 className="mb-2 flex w-full items-center justify-between rounded bg-gradient-to-r from-[#0F3476] to-[#087FE3] px-4 py-2.5 text-[11px] text-white"
               >
                 <span className="text-[12px] font-bold leading-none">
-                  {label}:
+                  {label}
                   {row.mode === "percent" && Number(row.value) > 0
                     ? ` (${formatCurrency(Number(row.value))}%)`
                     : ""}
+                  :
                 </span>
                 <span className="whitespace-nowrap text-[15px] font-bold leading-none">
                   {invoice.currency.symbol} {formatCurrency(amount)}
@@ -136,3 +140,4 @@ export default function BillingSummary({
     </section>
   );
 }
+c;
