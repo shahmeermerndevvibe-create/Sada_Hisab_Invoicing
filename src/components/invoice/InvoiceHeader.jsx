@@ -1,11 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import {
-  FileText,
-  ReceiptText,
-  RefreshCcw,
-  Settings,
-  Clock,
-} from "lucide-react";
+import { Clock, RefreshCcw, Settings } from "lucide-react";
 import SettingsModal from "@/components/settings/SettingsModal";
 import { Button } from "@/components/ui/button";
 
@@ -93,21 +87,23 @@ export default function InvoiceHeader() {
     setEditing(false);
   };
 
-  const DocumentIcon =
-    invoice.documentType === "Invoice" ? ReceiptText : FileText;
-
   return (
-    <div className="relative overflow-hidden rounded-t-xl rounded-b-3xl bg-white shadow-sm">
+    <div className="relative overflow-hidden
+     rounded-b-3xl bg-gradient-to-r from-[#5638D6] to-[#B154DF] shadow-md">
       <div className="relative z-10 px-5 py-5 sm:px-7 lg:px-9">
         <div className="flex flex-wrap items-center gap-5">
           {/* Invoice Identity */}
           <div className="flex min-w-0 flex-1 items-center gap-4">
-            <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50">
-              <DocumentIcon className="size-7 text-slate-600" />
+            <div className="flex size-14 shrink-0 items-center justify-center">
+              <img
+                src="/receipt.png"
+                alt="Invoice"
+                className="h-[150px] w-[150px] object-contain"
+              />
             </div>
 
             <div className="min-w-0">
-              <div className="mb-0.5 text-xs font-semibold uppercase tracking-wider text-slate-400">
+              <div className="mb-1 text-xs font-semibold uppercase tracking-[0.15em] text-white/75">
                 {invoice.documentType}
               </div>
 
@@ -127,7 +123,7 @@ export default function InvoiceHeader() {
                       setEditing(false);
                     }
                   }}
-                  className="w-44 rounded-md border border-blue-500 bg-white px-2 py-1 text-lg font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/20 sm:w-52"
+                  className="w-44 rounded-lg border border-white/40 bg-white px-3 py-1.5 text-lg font-bold text-slate-800 outline-none focus:ring-2 focus:ring-white/30 sm:w-52"
                 />
               ) : (
                 <button
@@ -136,10 +132,10 @@ export default function InvoiceHeader() {
                     setTempDocId(formatDocumentId(invoice));
                     setEditing(true);
                   }}
-                  className="flex items-center rounded-md px-1 py-0.5 text-lg font-semibold text-slate-800 transition hover:bg-slate-100"
+                  className="flex items-center rounded-lg px-2 py-1 text-xl font-bold tracking-tight text-white transition hover:bg-white/10"
                 >
                   {loading ? (
-                    <RefreshCcw className="mr-2 size-4 animate-spin text-slate-400" />
+                    <RefreshCcw className="mr-2 size-4 animate-spin text-white/70" />
                   ) : (
                     formatDocumentId(invoice)
                   )}
@@ -150,17 +146,15 @@ export default function InvoiceHeader() {
 
           {/* Document Type */}
           <div className="flex items-center gap-2">
-            <span className="hidden text-xs font-medium uppercase tracking-wide text-slate-400 sm:block">
+            <span className="hidden text-xs font-semibold uppercase tracking-wider text-white/75 sm:block">
               Type
             </span>
 
             <Select
               value={invoice.documentType}
-              onValueChange={(value) =>
-                updateInvoice("documentType", value)
-              }
+              onValueChange={(value) => updateInvoice("documentType", value)}
             >
-              <SelectTrigger className="h-10 w-32 border-slate-200 bg-slate-50 sm:w-36">
+              <SelectTrigger className="h-10 w-32 border-white/25 bg-white/15 font-medium text-white shadow-sm backdrop-blur-sm hover:bg-white/20 sm:w-36 [&>svg]:text-white">
                 <SelectValue />
               </SelectTrigger>
 
@@ -172,11 +166,11 @@ export default function InvoiceHeader() {
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-1 border-l border-slate-200 pl-3">
+          <div className="flex items-center gap-1 border-l border-white/20 pl-3">
             <Button
               variant="ghost"
               size="icon"
-              className="size-10 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+              className="size-10 text-white/80 hover:bg-white/15 hover:text-white"
               onClick={openInvoiceHistory}
               title="Document History"
             >
@@ -186,7 +180,7 @@ export default function InvoiceHeader() {
             <Button
               variant="ghost"
               size="icon"
-              className="size-10 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+              className="size-10 text-white/80 hover:bg-white/15 hover:text-white"
               onClick={() => setShowSettings(true)}
               title="Settings"
             >
@@ -196,9 +190,7 @@ export default function InvoiceHeader() {
         </div>
       </div>
 
-      {showSettings && (
-        <SettingsModal onClose={() => setShowSettings(false)} />
-      )}
+      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
     </div>
   );
 }

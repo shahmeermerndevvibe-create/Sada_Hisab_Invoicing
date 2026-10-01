@@ -48,7 +48,7 @@
 }
 
 :root {
-    --background: #f0efe7;
+    --background: #F4F3FB ;
     --foreground: oklch(0.145 0 0);
     --card: oklch(1 0 0);
     --card-foreground: oklch(0.145 0 0);

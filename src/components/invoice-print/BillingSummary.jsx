@@ -42,22 +42,24 @@ export default function BillingSummary({
       <div className="flex items-center">
         {notesPosition === "inline" && (
           <div className="max-w-[320px] flex-1">
-            <h3 className="mb-1 text-[12px] font-bold text-[#0A4A95]">Note:</h3>
+            <h3 className="mb-1 text-[12px] font-bold text-[#0A4A95]">
+              Note:
+            </h3>
 
             <div
               className="
-        max-w-[480px]
-        text-[10px] leading-[13px] text-black
-        [&_p]:text-[10px]
-        [&_span]:text-[10px]
-        [&_li]:text-[10px]
-        [&_div]:text-[10px]
-        [&_ul]:list-disc
-        [&_ul]:pl-4
-        [&_ol]:list-decimal
-        [&_ol]:pl-4
-        [&_li]:mb-0
-      "
+                max-w-[480px]
+                text-[10px] leading-[13px] text-black
+                [&_p]:text-[10px]
+                [&_span]:text-[10px]
+                [&_li]:text-[10px]
+                [&_div]:text-[10px]
+                [&_ul]:list-disc
+                [&_ul]:pl-4
+                [&_ol]:list-decimal
+                [&_ol]:pl-4
+                [&_li]:mb-0
+              "
               dangerouslySetInnerHTML={{
                 __html: invoice.notes || "<p>No notes available.</p>",
               }}
@@ -68,25 +70,32 @@ export default function BillingSummary({
         {/* Total Cost */}
         <div className="ml-auto mt-4 w-full max-w-[320px] shrink-0">
           {/* Subtotal */}
-          <div className="mb-2 flex w-full items-center justify-between rounded bg-gradient-to-r from-[#0F3476] to-[#087FE3] px-4 py-2.5 text-white">
-            <span className="text-[14px] font-bold leading-none">
+          <div className="mb-2 flex w-full items-center justify-between rounded bg-slate-50 px-4 py-2.5 text-black">
+            <span className="text-[14px] leading-none">
               Subtotal:
             </span>
             <span className="whitespace-nowrap text-[16px] font-bold leading-none">
-              {invoice.currency.symbol} {formatCurrency(subtotal)}
+              <span className="font-extrabold">{invoice.currency.symbol}</span>{" "}
+              {formatCurrency(subtotal)}
             </span>
           </div>
 
+          {/* Item Discounts */}
           {hasItemDiscounts && (
-            <div className="mb-2 flex w-full items-center justify-between rounded bg-gradient-to-r from-[#0F3476] to-[#087FE3] px-4 py-2.5 text-[11px] text-white">
-              <span className="text-[12px] font-bold leading-none">
+            <div className="mb-2 flex w-full items-center justify-between rounded bg-slate-50 px-4 py-2.5 text-black">
+              <span className="text-[12px] leading-none">
                 {invoice.itemDiscountLabel || "Item Discounts"}
               </span>
               <span className="whitespace-nowrap text-[15px] font-bold leading-none">
-                {invoice.currency.symbol} {formatCurrency(itemDiscountsTotal)}
+                <span className="font-extrabold">
+                  {invoice.currency.symbol}
+                </span>{" "}
+                {formatCurrency(itemDiscountsTotal)}
               </span>
             </div>
           )}
+
+          {/* Adjustment Rows */}
           {adjustmentRows.map((row, idx) => {
             const amount = adjustmentRowAmounts[row.id] ?? 0;
             if (amount <= 0) return null;
@@ -100,21 +109,27 @@ export default function BillingSummary({
             return (
               <div
                 key={row.id ?? `${row.type}-${idx}`}
-                className="mb-2 flex w-full items-center justify-between rounded bg-gradient-to-r from-[#0F3476] to-[#087FE3] px-4 py-2.5 text-[11px] text-white"
+                className="mb-2 flex w-full items-center justify-between rounded bg-slate-50 px-4 py-2.5 text-black"
               >
-                <span className="text-[12px] font-bold leading-none">
+                <span className="text-[12px] leading-none">
                   {label}
                   {row.mode === "percent" && Number(row.value) > 0
                     ? ` (${formatCurrency(Number(row.value))}%)`
                     : ""}
                   :
                 </span>
+
                 <span className="whitespace-nowrap text-[15px] font-bold leading-none">
-                  {invoice.currency.symbol} {formatCurrency(amount)}
+                  <span className="font-extrabold">
+                    {invoice.currency.symbol}
+                  </span>{" "}
+                  {formatCurrency(amount)}
                 </span>
               </div>
             );
           })}
+
+          {/* Total Cost */}
           <div
             className="ml-auto flex h-[52px] w-[90%] items-center bg-gradient-to-r from-[#087FE3] to-[#0F3476] text-white"
             style={{

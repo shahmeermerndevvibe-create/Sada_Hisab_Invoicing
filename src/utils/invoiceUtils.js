@@ -68,7 +68,11 @@ export const distributeProportionally = (weights = [], total = 0) => {
   return allocated;
 };
 
-export const calculateItemRow = (item = {}, invoiceDiscountType = "fixed") => {
+export const calculateItemRow = (
+  item = {},
+  invoiceDiscountType = "fixed",
+  offers = [],
+) => {
   const qty = Number(item.qty) || 0;
   const rate = Number(item.rate) || 0;
   const lineTotal = qty * rate;
@@ -78,10 +82,46 @@ export const calculateItemRow = (item = {}, invoiceDiscountType = "fixed") => {
     ? (lineTotal * Math.min(discount, 100)) / 100
     : Math.min(discount, lineTotal);
 
+  // Offers target one specific item (`appliesTo` === item.product).
+  // An item can have either a line-item discount or an offer, not both.
+  // `offerSteps` is a display-only per-offer breakdown for the print
+  // pipeline; its amounts always sum exactly to `offerDiscountAmount`.
+  let offerDiscountAmount = 0;
+  const offerSteps = [];
+  if (rate > 0 && item.product && !(Number(item.discount) > 0)) {
+    offers.forEach((offer, offerIndex) => {
+      if (offer?.appliesTo !== item.product) return;
+      const offerValue = Number(offer.value) || 0;
+      const amount =
+        offer.type === "percent"
+          ? (lineTotal * Math.min(offerValue, 100)) / 100
+          : Math.min(offerValue, lineTotal - offerDiscountAmount);
+      offerDiscountAmount += amount;
+      offerSteps.push({ index: offerIndex, amount });
+    });
+
+    const accumulated = offerDiscountAmount;
+    offerDiscountAmount = Math.min(
+      accumulated,
+      lineTotal - discountAmount,
+    );
+
+    // Same final clamp; trim the excess off the last offers so the steps
+    // still sum exactly to `offerDiscountAmount`.
+    let excess = accumulated - offerDiscountAmount;
+    for (let i = offerSteps.length - 1; i >= 0 && excess > 0; i--) {
+      const cut = Math.min(excess, offerSteps[i].amount);
+      offerSteps[i].amount -= cut;
+      excess -= cut;
+    }
+  }
+
   return {
     lineTotal,
     discountAmount,
-    netTotal: lineTotal - discountAmount,
+    offerDiscountAmount,
+    offerSteps,
+    netTotal: lineTotal - discountAmount - offerDiscountAmount,
   };
 };
 
@@ -92,115 +132,74 @@ export function formatDocumentId(invoice) {
   return invoice.documentSuffix ? `${base}-${invoice.documentSuffix}` : base;
 }
 
-// Multiple independent adjustment rows when `invoice.adjustments` exists;
-// otherwise fall back to legacy single discount/offerDiscount fields.
-export const getAdjustmentRows = (invoice = {}, type) => {
-  if (Array.isArray(invoice.adjustments)) {
-    return invoice.adjustments.filter((row) => row && row.type === type);
-  }
-
-  if (type === "discount") {
-    return Number(invoice.discount) > 0
-      ? [{
-          id: "legacy-discount",
-          type: "discount",
-          mode: invoice.discountType || "fixed",
-          value: invoice.discount,
-        }]
-      : [];
-  }
-
-  return Number(invoice.offerDiscount) > 0
-    ? [{
-        id: "legacy-offer",
-        type: "offer",
-        mode: invoice.offerDiscountType || "fixed",
-        value: invoice.offerDiscount,
-      }]
-    : [];
-};
-
-export const adjustmentAmount = (row, base) =>
-  applyDiscount(base, row?.value, row?.mode || "fixed");
-
-// Sequential order: actual `invoice.adjustments` array order when present;
-// legacy fallback keeps the historical offer-then-discount order.
+// Display rows for the summary/print, in flow order:
+//   one row per offer (actual offer name) → overall invoice discount.
+// Amounts live in `adjustmentRowAmounts` (see calculateInvoiceTotals),
+// keyed `offer-<index>` to match these row ids.
 export const getSequentialAdjustmentRows = (invoice = {}) => {
-  if (Array.isArray(invoice.adjustments)) {
-    return invoice.adjustments.filter(
-      (row) => row && (row.type === "discount" || row.type === "offer"),
-    );
+  const rows = [];
+
+  if (Array.isArray(invoice.offers)) {
+    invoice.offers.forEach((offer, index) => {
+      if (!offer) return;
+      rows.push({
+        id: `offer-${index}`,
+        type: "offer",
+        label: offer.name || invoice.offerDiscountLabel || "Offer Discount",
+        mode: offer.type === "percent" ? "percent" : "fixed",
+        value: offer.value,
+      });
+    });
   }
 
-  return [
-    ...getAdjustmentRows(invoice, "offer"),
-    ...getAdjustmentRows(invoice, "discount"),
-  ];
-};
-
-/**
- * Applies adjustments sequentially against the running remaining amount.
- * Percentage rows use the current remaining; fixed rows clamp to remaining.
- * Never lets remaining go below 0.
- *
- * Returns taxable remaining plus per-row applied amounts/bases (for UI).
- */
-export const computeAdjustmentBreakdown = (invoice = {}, afterItemDiscounts = 0) => {
-  const rows = getSequentialAdjustmentRows(invoice);
-  let remaining = Math.max(0, Number(afterItemDiscounts) || 0);
-
-  const rowAmounts = {};
-  const rowBases = {};
-  let discountAmount = 0;
-  let offerDiscountAmount = 0;
-
-  for (const row of rows) {
-    const base = remaining;
-    const amount = adjustmentAmount(row, base);
-    remaining = Math.max(0, remaining - amount);
-
-    if (row.id != null) {
-      rowAmounts[row.id] = amount;
-      rowBases[row.id] = base;
-    }
-
-    if (row.type === "offer") {
-      offerDiscountAmount += amount;
-    } else {
-      discountAmount += amount;
-    }
+  if (Number(invoice.discount) > 0) {
+    rows.push({
+      id: "invoice-discount",
+      type: "discount",
+      label: invoice.invoiceDiscountLabel || "Discount",
+      mode: invoice.discountType || "fixed",
+      value: invoice.discount,
+    });
   }
 
-  return {
-    taxableAmount: remaining,
-    discountAmount,
-    offerDiscountAmount,
-    rowAmounts,
-    rowBases,
-  };
+  return rows;
 };
 
 export const calculateInvoiceTotals = (
   items = [],
   invoice = {}
 ) => {
-  const itemRows = items.map(item => calculateItemRow(item, invoice.discountType));
+  const offers = Array.isArray(invoice.offers) ? invoice.offers : [];
+  const itemRows = items.map(item =>
+    calculateItemRow(item, invoice.discountType, offers),
+  );
+
   const subtotal = itemRows.reduce((sum, row) => sum + row.lineTotal, 0);
   const itemDiscountsTotal = itemRows.reduce((sum, row) => sum + row.discountAmount, 0);
+  const offerDiscountsTotal = itemRows.reduce((sum, row) => sum + row.offerDiscountAmount, 0);
 
-  const afterItemDiscounts = Math.max(0, subtotal - itemDiscountsTotal);
+  // Per-offer amounts for the print rows (display only); each row's steps
+  // sum exactly to that item's offerDiscountAmount, so the totals add up.
+  const offerAmounts = offers.map(() => 0);
+  for (const row of itemRows) {
+    for (const step of row.offerSteps) {
+      offerAmounts[step.index] += step.amount;
+    }
+  }
 
-  const breakdown = computeAdjustmentBreakdown(invoice, afterItemDiscounts);
-  const {
-    taxableAmount,
-    discountAmount,
-    offerDiscountAmount,
-    rowAmounts,
-    rowBases,
-  } = breakdown;
+  // Flow: subtotal → item discounts → offers → invoice discount → tax
+  const afterItemAndOfferDiscounts = Math.max(
+    0,
+    subtotal - itemDiscountsTotal - offerDiscountsTotal,
+  );
 
+  const discountAmount = applyDiscount(
+    afterItemAndOfferDiscounts,
+    invoice.discount,
+    invoice.discountType,
+  );
+  const taxableAmount = Math.max(0, afterItemAndOfferDiscounts - discountAmount);
   const taxAmount = calculateTax(taxableAmount, invoice);
-
   const total = taxableAmount + taxAmount;
 
   const balanceDue = calculateBalanceDue(
@@ -208,15 +207,24 @@ export const calculateInvoiceTotals = (
     invoice.deposit || 0
   );
 
+  const adjustmentRowAmounts = {
+    "offer-total": offerDiscountsTotal,
+    "invoice-discount": discountAmount,
+  };
+  offerAmounts.forEach((amount, index) => {
+    adjustmentRowAmounts[`offer-${index}`] = amount;
+  });
+
   return {
     subtotal,
     itemDiscountsTotal,
-    offerDiscountAmount,
+    offerDiscountsTotal,
+    // Alias kept for existing consumers (ReviewModal).
+    offerDiscountAmount: offerDiscountsTotal,
     discountAmount,
     taxAmount,
     total,
     balanceDue,
-    adjustmentRowAmounts: rowAmounts,
-    adjustmentRowBases: rowBases,
+    adjustmentRowAmounts,
   };
 };

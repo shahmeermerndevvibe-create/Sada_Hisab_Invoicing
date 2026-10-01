@@ -1,0 +1,335 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - img "Invoice" [ref=e9]
+        - generic [ref=e10]:
+          - generic [ref=e11]: Invoice
+          - button [ref=e12]
+      - generic [ref=e18]:
+        - generic [ref=e19]: Type
+        - combobox [ref=e20] [cursor=pointer]:
+          - generic [ref=e21]: Invoice
+          - img [aria-hidden]: ▼
+        - textbox [aria-hidden] [ref=e22]: Invoice
+      - generic [ref=e23]:
+        - button "Document History" [ref=e24] [cursor=pointer]
+        - button "Settings" [ref=e25] [cursor=pointer]
+    - generic [ref=e27]:
+      - generic [ref=e34]:
+        - heading "Customer Information" [level=3] [ref=e35]
+        - paragraph [ref=e36]: Business and contact details
+      - generic [ref=e37]:
+        - generic [ref=e38]:
+          - generic [ref=e39]: Business Name
+          - textbox "Business Name" [ref=e44]
+        - generic [ref=e45]:
+          - generic [ref=e46]: Contact Person
+          - textbox "Contact Person Name" [ref=e50]
+        - generic [ref=e51]:
+          - generic [ref=e52]: Business Email
+          - textbox "business@example.com" [ref=e56]
+        - generic [ref=e57]:
+          - generic [ref=e58]: Business Phone Number
+          - textbox "03123456789" [ref=e61]
+        - generic [ref=e62]:
+          - generic [ref=e63]: Business Address
+          - textbox "Street, City, Province, Postal Code" [ref=e67]
+      - heading "Invoice Details" [level=3] [ref=e76]
+      - generic [ref=e77]:
+        - generic [ref=e78]:
+          - generic [ref=e79]:
+            - text: Invoice Date
+            - generic [ref=e82]: "*"
+          - textbox [ref=e83]: 2026-10-01
+        - generic [ref=e84]:
+          - generic [ref=e85]: Due Date
+          - textbox [ref=e88]
+    - generic [ref=e89]:
+      - generic [ref=e90]:
+        - generic [ref=e91]:
+          - generic [ref=e98]:
+            - heading "Invoice Items" [level=2] [ref=e99]
+            - paragraph [ref=e100]: Add line items for this invoice
+          - generic [ref=e101]: 2 items
+        - table [ref=e103]:
+          - rowgroup [ref=e104]:
+            - row [ref=e105]:
+              - columnheader [ref=e106]
+              - columnheader "#" [ref=e107]
+              - columnheader "Title" [ref=e108]
+              - columnheader "Description" [ref=e109]
+              - columnheader "Quantity" [ref=e110]
+              - columnheader "Unit Price (PKR)" [ref=e111]
+              - columnheader "Total Price" [ref=e112]
+              - columnheader [ref=e113]
+          - rowgroup [ref=e114]:
+            - row [ref=e115]:
+              - cell [ref=e116]
+              - cell "1" [ref=e124]
+              - cell [ref=e125]:
+                - textbox "Title" [ref=e126]: One-time Setup Fee - FBR POS Digital Invoicing
+              - cell "200 characters left" [ref=e127]:
+                - generic [ref=e128]:
+                  - textbox "Enter description..." [ref=e129]
+                  - generic [ref=e130]: 200 characters left
+              - cell [ref=e132]:
+                - spinbutton "1" [ref=e133]
+              - cell [ref=e134]:
+                - spinbutton "0" [ref=e135]
+              - cell "0" [ref=e136]
+              - cell [ref=e138]:
+                - img [aria-hidden] [ref=e139] [cursor=pointer]
+            - row [ref=e142]:
+              - cell [ref=e143]
+              - cell "2" [ref=e151]
+              - cell [ref=e152]:
+                - textbox "Title" [ref=e153]: Starter-Plan - Plan Monthly Subscription - FBR POS
+              - cell "200 characters left" [ref=e154]:
+                - generic [ref=e155]:
+                  - textbox "Enter description..." [ref=e156]
+                  - generic [ref=e157]: 200 characters left
+              - cell [ref=e159]:
+                - spinbutton "1" [ref=e160]
+              - cell [ref=e161]:
+                - spinbutton "0" [ref=e162]
+              - cell "0" [ref=e163]
+              - cell [ref=e165]:
+                - img [aria-hidden] [ref=e166] [cursor=pointer]
+        - generic [ref=e170]:
+          - button "Add Line" [ref=e171] [cursor=pointer]
+          - button "Clear All Lines" [ref=e172] [cursor=pointer]
+      - generic [ref=e173]:
+        - generic [ref=e174]:
+          - generic [ref=e175]:
+            - heading "Notes & Terms" [level=3] [ref=e176]
+            - paragraph [ref=e177]: Add any notes or payment terms
+          - generic [ref=e181]:
+            - button "↶" [ref=e182] [cursor=pointer]
+            - button "↷" [ref=e183] [cursor=pointer]
+            - button "𝐁" [ref=e185] [cursor=pointer]
+            - button "𝑰" [ref=e186] [cursor=pointer]
+            - button "𝐔" [ref=e187] [cursor=pointer]
+            - button "ab" [ref=e188] [cursor=pointer]
+            - button "Bullet list" [ref=e190] [cursor=pointer]
+            - button "Numbered list" [ref=e193] [cursor=pointer]
+            - button "🔗" [ref=e197] [cursor=pointer]
+            - button "T̲ₓ" [ref=e199] [cursor=pointer]
+        - generic [ref=e201]:
+          - generic [ref=e202]:
+            - heading "Payment Method" [level=3] [ref=e203]
+            - paragraph [ref=e204]: Bank details or payment instructions
+          - generic [ref=e207]:
+            - generic [ref=e208]:
+              - button "𝐁" [ref=e209] [cursor=pointer]
+              - button "🔗" [ref=e210] [cursor=pointer]
+            - generic [ref=e211]:
+              - paragraph [ref=e212]: "Bank Name: Standard Chartered Bank"
+              - paragraph [ref=e213]: "Account Name: DEV VIBE (PRIVATE) LIMITED"
+              - paragraph [ref=e214]: "Account No: 01702858901PKR"
+              - paragraph [ref=e215]: "IBAN: PK60SCBL0000001702858901"
+        - generic [ref=e216]:
+          - generic [ref=e217]:
+            - heading "Invoice Summary" [level=3] [ref=e218]
+            - paragraph [ref=e219]: Totals and discounts breakdown
+          - generic [ref=e222]:
+            - heading "Invoice Summary" [level=2] [ref=e224]
+            - generic [ref=e225]:
+              - button "Invoice Discount" [disabled] [ref=e226]:
+                - generic [aria-hidden] [ref=e227]: +
+                - text: Invoice Discount
+              - generic [ref=e228]:
+                - generic [ref=e229]:
+                  - paragraph [ref=e230]: Offers
+                  - button "Add Offer" [disabled] [ref=e231]:
+                    - generic [aria-hidden] [ref=e232]: +
+                    - text: Add Offer
+                - paragraph [ref=e233]: No offers added yet
+            - generic [ref=e234]:
+              - generic [ref=e235]:
+                - generic [ref=e236]: Subtotal
+                - generic [ref=e237]: Rs 0
+              - generic [ref=e238]:
+                - generic [ref=e239]:
+                  - paragraph [ref=e240]: Total
+                  - paragraph [ref=e241]: Final quotation amount
+                - paragraph [ref=e242]: Rs 0
+            - generic [ref=e243]:
+              - button "Print Invoice" [ref=e244] [cursor=pointer]
+              - button "Save Draft" [ref=e245] [cursor=pointer]
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - img "Logo"
+            - paragraph: "SECP: 123456789X"
+          - generic:
+            - generic:
+              - heading "INVOICE" [level=1]
+              - paragraph: "# DV-SH-1001"
+    - generic:
+      - generic:
+        - heading "Date:10/1/2026" [level=3]
+        - generic:
+          - generic:
+            - generic:
+              - heading "Invoice To:" [level=4]
+              - heading [level=2]
+          - generic:
+            - generic:
+              - heading "Payment Method" [level=4]
+              - generic:
+                - paragraph: "Bank Name: Standard Chartered Bank"
+                - paragraph: "Account Name: DEV VIBE (PRIVATE) LIMITED"
+                - paragraph: "Account No: 01702858901PKR"
+                - paragraph: "IBAN: PK60SCBL0000001702858901"
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - table:
+                - rowgroup:
+                  - row "Description Unit Price Quantity Total Price":
+                    - columnheader "Description"
+                    - columnheader "Unit Price"
+                    - columnheader "Quantity"
+                    - columnheader "Total Price"
+                - rowgroup:
+                  - row "One-time Setup Fee - FBR POS Digital Invoicing 0 1 0":
+                    - cell "One-time Setup Fee - FBR POS Digital Invoicing":
+                      - paragraph:
+                        - generic:
+                          - generic: One-
+                          - generic: time Setup Fee -
+                          - generic: FBR POS Digital Invoicing
+                    - cell "0"
+                    - cell "1"
+                    - cell "0"
+                  - row "Starter-Plan - Plan Monthly Subscription - FBR POS 0 1 0":
+                    - cell "Starter-Plan - Plan Monthly Subscription - FBR POS":
+                      - paragraph:
+                        - generic:
+                          - generic: Starter-
+                          - generic: Plan -
+                          - generic: Plan Monthly Subscription -
+                          - generic: FBR POS
+                    - cell "0"
+                    - cell "1"
+                    - cell "0"
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - table:
+                - rowgroup:
+                  - row "Description Unit Price Quantity Total Price":
+                    - columnheader "Description"
+                    - columnheader "Unit Price"
+                    - columnheader "Quantity"
+                    - columnheader "Total Price"
+                - rowgroup:
+                  - row "One-time Setup Fee - FBR POS Digital Invoicing 0 1 0":
+                    - cell "One-time Setup Fee - FBR POS Digital Invoicing":
+                      - paragraph:
+                        - generic:
+                          - generic: One-
+                          - generic: time Setup Fee -
+                          - generic: FBR POS Digital Invoicing
+                    - cell "0"
+                    - cell "1"
+                    - cell "0"
+                  - row "Starter-Plan - Plan Monthly Subscription - FBR POS 0 1 0":
+                    - cell "Starter-Plan - Plan Monthly Subscription - FBR POS":
+                      - paragraph:
+                        - generic:
+                          - generic: Starter-
+                          - generic: Plan -
+                          - generic: Plan Monthly Subscription -
+                          - generic: FBR POS
+                    - cell "0"
+                    - cell "1"
+                    - cell "0"
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - table:
+                - rowgroup:
+                  - row "Description Unit Price Quantity Total Price":
+                    - columnheader "Description"
+                    - columnheader "Unit Price"
+                    - columnheader "Quantity"
+                    - columnheader "Total Price"
+                - rowgroup:
+                  - row "One-time Setup Fee - FBR POS Digital Invoicing 0 1 0":
+                    - cell "One-time Setup Fee - FBR POS Digital Invoicing":
+                      - paragraph:
+                        - generic:
+                          - generic: One-
+                          - generic: time Setup Fee -
+                          - generic: FBR POS Digital Invoicing
+                    - cell "0"
+                    - cell "1"
+                    - cell "0"
+                  - row "Starter-Plan - Plan Monthly Subscription - FBR POS 0 1 0":
+                    - cell "Starter-Plan - Plan Monthly Subscription - FBR POS":
+                      - paragraph:
+                        - generic:
+                          - generic: Starter-
+                          - generic: Plan -
+                          - generic: Plan Monthly Subscription -
+                          - generic: FBR POS
+                    - cell "0"
+                    - cell "1"
+                    - cell "0"
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - heading "Note:" [level=3]
+              - generic:
+                - paragraph: No notes available.
+            - generic:
+              - generic:
+                - generic: "Subtotal:"
+                - generic: Rs 0
+              - generic:
+                - generic: "Total Cost:"
+                - generic:
+                  - generic: Rs
+                  - generic: "0"
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - heading "Note:" [level=3]
+              - generic:
+                - paragraph: No notes available.
+            - generic:
+              - generic:
+                - generic: "Subtotal:"
+                - generic: Rs 0
+              - generic:
+                - generic: "Total Cost:"
+                - generic:
+                  - generic: Rs
+                  - generic: "0"
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - heading "Note:" [level=3]
+              - generic:
+                - paragraph: No notes available.
+            - generic:
+              - generic:
+                - generic: "Subtotal:"
+                - generic: Rs 0
+              - generic:
+                - generic: "Total Cost:"
+                - generic:
+                  - generic: Rs
+                  - generic: "0"

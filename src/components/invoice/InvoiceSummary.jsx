@@ -1,221 +1,242 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Printer, Loader2 } from "lucide-react";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Printer,
+  Loader2,
+  Pencil,
+  Trash2,
+  Check,
+  X,
+} from "lucide-react";
 
 import { useInvoiceStore } from "@/store/invoiceStore";
 import { useInvoiceTotals } from "@/hooks/useInvoiceTotals";
-import {
-  formatCurrency,
-  getSequentialAdjustmentRows,
-} from "@/utils/invoiceUtils";
+import { formatCurrency } from "@/utils/invoiceUtils";
 import { saveDocument } from "@/actions/invoiceActions";
 import { validateInvoice } from "@/vaidations/invoiceValidation";
 import { toast } from "react-hot-toast";
 
-const ADJUSTMENT_META = {
-  discount: { title: "Invoice Discount" },
-  offer: { title: "Offer Discount" },
+const SECTION_LABEL =
+  "text-[11px] font-semibold uppercase tracking-wider text-slate-400";
+
+const ADD_BUTTON_CLASS =
+  "flex h-9 items-center gap-1.5 rounded-lg border border-dashed border-slate-300 bg-white px-3.5 text-[13px] font-medium text-slate-500 transition-colors hover:border-blue-300 hover:bg-blue-50/50 hover:text-blue-600 focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-300 disabled:hover:border-slate-200 disabled:hover:bg-slate-50 disabled:hover:text-slate-300";
+
+const MODE_SELECT_CLASS =
+  "h-9 shrink-0 rounded-md border border-slate-200 bg-white px-2.5 text-sm font-medium text-slate-600 focus:outline-none focus:ring-1 focus-visible:ring-slate-300";
+
+// Structured card shell for the invoice discount and offer rows.
+const DISCOUNT_CARD_CLASS =
+  "space-y-3 rounded-xl border border-slate-200/80 bg-slate-50/70 px-4 py-4";
+
+const clampNumber = (raw, percent, max) => {
+  if (raw === "") return "";
+  const num = Number(raw);
+  if (Number.isNaN(num)) return null;
+  if (num < 0) return "0";
+  if (percent && num > 100) return "100";
+  if (!percent && max != null && num > max) return String(max);
+  return raw;
 };
 
-const createAdjustmentId = () =>
-  `adj_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+function AddButton({ children, onClick, disabled = false, title }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      className={ADD_BUTTON_CLASS}
+    >
+      <span aria-hidden="true" className="text-base leading-none">
+        +
+      </span>
+      {children}
+    </button>
+  );
+}
 
-const clampAdjustmentValue = (raw, mode, max) => {
-  let num = Number(raw);
-  if (raw === "" || Number.isNaN(num)) num = 0;
-  if (num < 0) num = 0;
-  if (mode === "percent") return Math.min(num, 100);
-  return Math.min(num, Math.max(0, max ?? 0));
-};
+// Always-visible numeric input, uncontrolled: typing edits the DOM directly
+// (smooth decimals/backspacing), while external updates (mode conversion,
+// invoice loads) sync the DOM value only when the numeric value differs.
+function InlineNumberInput({
+  value,
+  max,
+  percent = false,
+  onChange,
+  suffix,
+  ariaLabel = "Value",
+}) {
+  const inputRef = useRef(null);
 
-// Convert value between Fixed/Percentage using the row's current base amount.
-// Returns 0 when conversion is not possible (base <= 0 or invalid input).
-const convertAdjustmentValue = (value, fromMode, toMode, base) => {
-  if (fromMode === toMode) {
-    return clampAdjustmentValue(value, toMode, base);
-  }
+  useEffect(() => {
+    const el = inputRef.current;
+    if (el && Number(el.value) !== Number(value)) {
+      el.value = String(Number(value) || 0);
+    }
+  }, [value]);
 
-  const num = Number(value) || 0;
-  const safeBase = Math.max(0, base ?? 0);
-  if (num <= 0 || safeBase <= 0) return 0;
-
-  let converted;
-  if (fromMode === "fixed" && toMode === "percent") {
-    converted = (num / safeBase) * 100;
-  } else if (fromMode === "percent" && toMode === "fixed") {
-    converted = (num / 100) * safeBase;
-  } else {
-    return 0;
-  }
-
-  if (!Number.isFinite(converted) || converted < 0) return 0;
-  return clampAdjustmentValue(converted, toMode, safeBase);
-};
-
-function EditableLabel({ label, onCommit }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(label);
-
-  const commit = () => {
-    const next = draft.trim();
-    onCommit(next || label);
-    setEditing(false);
+  const handleChange = (e) => {
+    const next = clampNumber(e.target.value, percent, max);
+    if (next === null) return;
+    e.target.value = next;
+    onChange(Number(next) || 0);
   };
 
-  if (!editing) {
-    return (
-      <button
-        type="button"
-        title="Click to edit label"
-        onClick={() => {
-          setDraft(label);
-          setEditing(true);
-        }}
-        className="min-w-0 flex-1 cursor-text truncate text-left text-sm font-medium text-slate-800 hover:text-blue-600 focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-400"
+  const handleBlur = (e) => {
+    if (e.target.value.trim() !== "") {
+      e.target.value = String(Number(e.target.value) || 0);
+    }
+  };
+
+  return (
+    <div className="relative shrink-0">
+      <input
+        ref={inputRef}
+        type="number"
+        inputMode="decimal"
+        min={0}
+        max={percent ? 100 : max}
+        defaultValue={String(Number(value) || 0)}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        aria-label={ariaLabel}
+        className="h-9 w-28 rounded-md border border-slate-200 bg-white px-2 pr-6 text-right text-sm font-medium tabular-nums text-slate-800 focus:outline-none focus:ring-1 focus-visible:ring-blue-400"
+      />
+      {suffix && (
+        <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-400">
+          {suffix}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// One discount line inside the Total breakdown container.
+function BreakdownRow({ label, amount, symbol }) {
+  return (
+    <div className="flex items-center justify-between gap-3 text-[13px]">
+      <span className="min-w-0 truncate font-medium text-slate-600">
+        {label}
+      </span>
+      <span className="font-medium whitespace-nowrap tabular-nums text-rose-600">
+        − {symbol} {formatCurrency(amount)}
+      </span>
+    </div>
+  );
+}
+
+// Named offer line (name + target) inside the Total breakdown container.
+function OfferBreakdownRow({ name, target, amount, symbol }) {
+  return (
+    <div className="flex items-center justify-between gap-3 text-[13px]">
+      <div className="min-w-0">
+        <p className="truncate font-medium text-slate-600">{name}</p>
+        <p className="mt-0.5 truncate text-xs text-slate-400">
+          Off — {target}
+        </p>
+      </div>
+      <span className="font-medium whitespace-nowrap tabular-nums text-rose-600">
+        − {symbol} {formatCurrency(amount)}
+      </span>
+    </div>
+  );
+}
+
+// One line inside the item price progression breakdown.
+function PriceRow({ label, amount, symbol, discount = false, strong = false }) {
+  return (
+    <div className="flex items-center justify-between gap-3 text-[13px]">
+      <span
+        className={
+          strong
+            ? "min-w-0 truncate font-medium text-slate-700"
+            : "min-w-0 truncate text-slate-500"
+        }
       >
         {label}
-      </button>
-    );
-  }
-
-  return (
-    <input
-      autoFocus
-      type="text"
-      value={draft}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={commit}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          commit();
-        }
-        if (e.key === "Escape") {
-          setDraft(label);
-          setEditing(false);
-        }
-      }}
-      aria-label="Adjustment label"
-      className="h-7 min-w-0 flex-1 rounded-md border border-blue-300 bg-white px-2 text-sm font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-400"
-    />
-  );
-}
-
-function AdjustmentRow({
-  row,
-  computed,
-  max,
-  symbol,
-  onChange,
-  onRemove,
-}) {
-  const meta = ADJUSTMENT_META[row.type] || { title: row.type };
-  const label = row.label || meta.title;
-  const mode = row.mode || "fixed";
-  const isPercent = mode === "percent";
-  const safeMax = Math.max(0, max ?? 0);
-  const rawValue = Number(row.value) || 0;
-  const effectiveValue = isPercent
-    ? Math.min(rawValue, 100)
-    : Math.min(rawValue, safeMax);
-
-  const handleValueChange = (raw) => {
-    onChange({ value: clampAdjustmentValue(raw, mode, safeMax) });
-  };
-
-  return (
-    <div
-      data-adjustment-id={row.id}
-      className="rounded-xl border border-slate-200/80 bg-slate-50/70 px-4 py-3.5"
-    >
-      <div className="flex items-center justify-between gap-3">
-        <EditableLabel
-          label={label}
-          onCommit={(next) => onChange({ label: next })}
-        />
-        <span className="shrink-0 text-right text-sm font-semibold whitespace-nowrap tabular-nums text-slate-800">
-          −{isPercent
-            ? `${formatCurrency(rawValue)}% · ${symbol} ${formatCurrency(computed)}`
-            : `${symbol} ${formatCurrency(computed)}`}
-        </span>
-      </div>
-
-      <div className="mt-3 flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <select
-            value={isPercent ? "percent" : "fixed"}
-            onChange={(e) => {
-              const nextMode = e.target.value;
-              const converted = convertAdjustmentValue(
-                rawValue,
-                mode,
-                nextMode,
-                safeMax,
-              );
-              onChange({ mode: nextMode, value: converted });
-            }}
-            aria-label={`${label} mode`}
-            className="h-8 shrink-0 rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-600 focus:outline-none focus:ring-1 focus-visible:ring-slate-300"
-          >
-            <option value="fixed">Fixed</option>
-            <option value="percent">Percentage</option>
-          </select>
-
-          <div className="relative min-w-0">
-            <Input
-              type="number"
-              inputMode="decimal"
-              min={0}
-              max={isPercent ? 100 : safeMax}
-              value={effectiveValue}
-              onChange={(e) => handleValueChange(e.target.value)}
-              onFocus={(e) => {
-                const input = e.target;
-                if (input.value === "0" || input.value === "0.00") {
-                  input.select();
-                }
-              }}
-              aria-label={`${label} value`}
-              className="h-8 w-32 border-slate-200 bg-white pr-6 text-right text-sm shadow-none focus-visible:ring-1 focus-visible:ring-slate-300"
-            />
-            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-400">
-              {isPercent ? "%" : symbol}
-            </span>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={onRemove}
-          className="shrink-0 rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 focus:outline-none focus-visible:ring-1 focus-visible:ring-slate-300"
-        >
-          Remove
-        </button>
-      </div>
+      </span>
+      <span
+        className={`whitespace-nowrap tabular-nums ${
+          discount
+            ? "font-medium text-rose-600"
+            : strong
+              ? "font-semibold text-slate-900"
+              : "font-medium text-slate-800"
+        }`}
+      >
+        {discount && "− "}
+        {symbol} {formatCurrency(amount)}
+      </span>
     </div>
   );
 }
 
-function AddAdjustmentButtons({ onAdd, disabled = false }) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      {(["discount", "offer"]).map((type) => (
-        <button
-          key={type}
-          type="button"
-          onClick={() => onAdd(type)}
-          disabled={disabled}
-          className="flex h-9 items-center gap-1.5 rounded-lg border border-dashed border-slate-300 bg-white px-3.5 text-[13px] font-medium text-slate-500 transition-colors hover:border-blue-300 hover:bg-blue-50/50 hover:text-blue-600 focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-300 disabled:hover:border-slate-200 disabled:hover:bg-slate-50 disabled:hover:text-slate-300"
-        >
-          <span aria-hidden="true" className="text-base leading-none">+</span>
-          {ADJUSTMENT_META[type].title}
-        </button>
-      ))}
-    </div>
-  );
-}
+// Display-only mirror of calculateItemRow's per-offer application: for each
+// item with applying offers, the ordered progression and the resulting price
+// after each step. Also powers the Totals breakdown (steps summed per offer
+// index). Keep in sync with src/utils/invoiceUtils.js; never used for math.
+const computeOfferProgressions = (items, offers, discountType) => {
+  const progressions = [];
+
+  items.forEach((item) => {
+    const qty = Number(item.qty) || 0;
+    const rate = Number(item.rate) || 0;
+    const lineTotal = qty * rate;
+    const discount = rate > 0 ? Number(item.discount) || 0 : 0;
+    const discountAmount =
+      discountType === "percent"
+        ? (lineTotal * Math.min(discount, 100)) / 100
+        : Math.min(discount, lineTotal);
+
+    if (!(rate > 0) || !item.product || Number(item.discount) > 0) return;
+    if (!(lineTotal > 0)) return;
+
+    const matched = [];
+    let accumulated = 0;
+
+    offers.forEach((offer, index) => {
+      if (offer?.appliesTo !== item.product) return;
+      const offerValue = Number(offer.value) || 0;
+      const amount =
+        offer.type === "percent"
+          ? (lineTotal * Math.min(offerValue, 100)) / 100
+          : Math.min(offerValue, lineTotal - accumulated);
+      accumulated += amount;
+      matched.push({ index, name: offer.name, amount });
+    });
+
+    if (matched.length === 0) return;
+
+    // Same final clamp as calculateItemRow; trim excess off the last offers
+    // so the amounts still sum to offerDiscountsTotal.
+    let excess = accumulated - Math.min(accumulated, lineTotal - discountAmount);
+    for (let i = matched.length - 1; i >= 0 && excess > 0; i--) {
+      const cut = Math.min(excess, matched[i].amount);
+      matched[i].amount -= cut;
+      excess -= cut;
+    }
+
+    let running = lineTotal;
+    const steps = matched.map((step) => {
+      running = Math.max(0, running - step.amount);
+      return { ...step, after: running };
+    });
+
+    progressions.push({ product: item.product, original: lineTotal, steps });
+  });
+
+  return progressions;
+};
 
 const validateAndNotify = (invoice, items, subtotal, setErrors) => {
   const { isValid, errors } = validateInvoice(invoice, items, subtotal);
@@ -261,60 +282,227 @@ export default function InvoiceSummary({ onPrint }) {
   const {
     subtotal,
     itemDiscountsTotal,
+    offerDiscountsTotal,
+    discountAmount,
     total,
     balanceDue,
-    adjustmentRowAmounts,
-    adjustmentRowBases,
   } = useInvoiceTotals();
 
-  const adjustments = getSequentialAdjustmentRows(invoice);
+  const symbol = invoice.currency.symbol;
+  const offers = Array.isArray(invoice.offers) ? invoice.offers : [];
+  const selectableItems = items.filter((item) => item.product?.trim());
 
-  const offerBase = Math.max(0, subtotal - itemDiscountsTotal);
-  const canAddAdjustments = offerBase > 0;
+  // Amount the overall invoice discount applies to.
+  const discountBase = Math.max(
+    0,
+    subtotal - itemDiscountsTotal - offerDiscountsTotal,
+  );
 
-  // Sequential display: each row's label + amount + remaining after it
-  const breakdownSteps = [];
-  {
-    let remaining = offerBase;
-    for (const row of adjustments) {
-      const meta = ADJUSTMENT_META[row.type] || { title: row.type };
-      const label = row.label || meta.title;
-      const amount = adjustmentRowAmounts[row.id] ?? 0;
-      remaining = Math.max(0, remaining - amount);
-      breakdownSteps.push({ id: row.id, label, amount, after: remaining });
+  // Adding a discount/offer requires a real amount to discount.
+  const hasValidAmount = discountBase > 0;
+  const canAddOffer =
+    hasValidAmount &&
+    selectableItems.some((item) => {
+      const lineTotal = (Number(item.qty) || 0) * (Number(item.rate) || 0);
+      return lineTotal > 0 && !(Number(item.discount) > 0);
+    });
+  const showBreakdown =
+    itemDiscountsTotal > 0 || offerDiscountsTotal > 0 || discountAmount > 0;
+  const totalDiscounts =
+    itemDiscountsTotal + offerDiscountsTotal + discountAmount;
+  // Display only: per-item offer progression (shown under Offers) and the
+  // per-offer amounts used by the Totals breakdown.
+  const offerProgressions = computeOfferProgressions(
+    items,
+    offers,
+    invoice.discountType,
+  );
+  const offerAmounts = offers.map(() => 0);
+  offerProgressions.forEach((progression) => {
+    progression.steps.forEach((step) => {
+      offerAmounts[step.index] += step.amount;
+    });
+  });
+
+  // ── Offer form ──
+  const [showOfferForm, setShowOfferForm] = useState(false);
+  const [editingOfferIndex, setEditingOfferIndex] = useState(null);
+  const [offerForm, setOfferForm] = useState({
+    name: "",
+    type: "percent",
+    value: "",
+    appliesTo: "",
+  });
+
+  const resetOfferForm = () => {
+    setOfferForm({ name: "", type: "percent", value: "", appliesTo: "" });
+    setEditingOfferIndex(null);
+    setShowOfferForm(false);
+  };
+
+  const targetItem = selectableItems.find(
+    (item) => item.product === offerForm.appliesTo,
+  );
+  const targetLineTotal = targetItem
+    ? (Number(targetItem.qty) || 0) * (Number(targetItem.rate) || 0)
+    : 0;
+
+  const handleSaveOffer = () => {
+    const name = offerForm.name.trim();
+    const value = Number(offerForm.value);
+
+    if (!name) {
+      toast.error("Offer name is required.");
+      return;
     }
-  }
+    if (!offerForm.value || Number.isNaN(value) || value <= 0) {
+      toast.error("Discount value is required.");
+      return;
+    }
+    if (!offerForm.appliesTo) {
+      toast.error("Please select an item.");
+      return;
+    }
+    if (!targetItem) {
+      toast.error("Selected item was not found.");
+      return;
+    }
+    if (targetLineTotal <= 0) {
+      toast.error("Selected item has no amount. Set qty and rate first.");
+      return;
+    }
+    if (Number(targetItem.discount) > 0) {
+      toast.error(
+        "This item already has a discount. Remove the item discount first before applying an offer.",
+      );
+      return;
+    }
+    if (offerForm.type === "percent" && value > 100) {
+      toast.error("Percentage discount cannot exceed 100%.");
+      return;
+    }
+    if (offerForm.type === "fixed" && value > targetLineTotal) {
+      toast.error(
+        `Fixed discount cannot exceed item total of ${symbol} ${formatCurrency(targetLineTotal)}.`,
+      );
+      return;
+    }
 
-  const commitAdjustments = (rows) => {
-    updateInvoice("adjustments", rows);
-  };
-
-  const addAdjustment = (type) => {
-    if (!canAddAdjustments) return;
-    const meta = ADJUSTMENT_META[type] || { title: type };
-    const row = {
-      id: createAdjustmentId(),
-      type,
-      mode: "fixed",
-      value: 0,
-      label: meta.title,
+    const newOffer = {
+      id:
+        editingOfferIndex !== null
+          ? offers[editingOfferIndex]?.id ?? `offer_${Date.now()}`
+          : `offer_${Date.now()}`,
+      name,
+      type: offerForm.type,
+      value,
+      appliesTo: offerForm.appliesTo,
     };
-    commitAdjustments([...adjustments, row]);
+
+    const updatedOffers =
+      editingOfferIndex !== null
+        ? offers.map((offer, i) => (i === editingOfferIndex ? newOffer : offer))
+        : [...offers, newOffer];
+
+    updateInvoice("offers", updatedOffers);
+    resetOfferForm();
   };
 
-  const updateAdjustment = (id, patch) => {
-    commitAdjustments(
-      adjustments.map((row) => (row.id === id ? { ...row, ...patch } : row)),
+  const handleEditOffer = (index) => {
+    const offer = offers[index];
+    if (!offer) return;
+    setOfferForm({
+      name: offer.name || "",
+      type: offer.type === "fixed" ? "fixed" : "percent",
+      value: String(offer.value ?? ""),
+      appliesTo: offer.appliesTo || "",
+    });
+    setEditingOfferIndex(index);
+    setShowOfferForm(true);
+  };
+
+  const handleDeleteOffer = (index) => {
+    updateInvoice(
+      "offers",
+      offers.filter((_, i) => i !== index),
     );
   };
 
-  const removeAdjustment = (id) => {
-    commitAdjustments(adjustments.filter((row) => row.id !== id));
+  const handleOfferValueSave = (index, num) => {
+    const offer = offers[index];
+    if (!offer) return;
+    const item = selectableItems.find((i) => i.product === offer.appliesTo);
+    const lineTotal = item
+      ? (Number(item.qty) || 0) * (Number(item.rate) || 0)
+      : 0;
+
+    let value = num;
+    if (offer.type === "percent") value = Math.min(num, 100);
+    else if (lineTotal > 0) value = Math.min(num, lineTotal);
+
+    updateInvoice(
+      "offers",
+      offers.map((o, i) => (i === index ? { ...o, value } : o)),
+    );
   };
 
-  const rowComputed = (row) => adjustmentRowAmounts[row.id] ?? 0;
+  // Converts the offer value when switching Fixed ↔ Percentage,
+  // using the target item's line total as the base.
+  const handleOfferTypeChange = (index, nextType) => {
+    const offer = offers[index];
+    if (!offer || nextType === offer.type) return;
 
-  const rowMax = (row) => adjustmentRowBases[row.id] ?? offerBase;
+    const item = selectableItems.find((i) => i.product === offer.appliesTo);
+    const lineTotal = item
+      ? (Number(item.qty) || 0) * (Number(item.rate) || 0)
+      : 0;
+
+    let value = Number(offer.value) || 0;
+    value =
+      nextType === "percent"
+        ? lineTotal > 0
+          ? (value / lineTotal) * 100
+          : 0
+        : (value / 100) * lineTotal;
+    value = Math.max(0, Math.round(value * 100) / 100);
+    value = Math.min(value, nextType === "percent" ? 100 : lineTotal);
+
+    updateInvoice(
+      "offers",
+      offers.map((o, i) =>
+        i === index ? { ...o, type: nextType, value } : o,
+      ),
+    );
+  };
+
+  // ── Overall invoice discount ──
+  const [showInvoiceDiscount, setShowInvoiceDiscount] = useState(false);
+  const invoiceDiscountVisible =
+    showInvoiceDiscount || Number(invoice.discount) > 0;
+
+  const handleInvoiceDiscountModeChange = (nextMode) => {
+    const current = Number(invoice.discount) || 0;
+    let next = current;
+
+    if (nextMode !== invoice.discountType) {
+      next =
+        nextMode === "percent"
+          ? discountBase > 0
+            ? (current / discountBase) * 100
+            : 0
+          : (current / 100) * discountBase;
+      next = Math.max(0, Math.round(next * 100) / 100);
+      next = Math.min(next, nextMode === "percent" ? 100 : discountBase);
+    }
+
+    updateInvoice("discountType", nextMode);
+    updateInvoice("discount", next);
+  };
+
+  const clearInvoiceDiscount = () => {
+    updateInvoice("discount", 0);
+    setShowInvoiceDiscount(false);
+  };
 
   const handlePrintInvoice = async () => {
     try {
@@ -424,85 +612,427 @@ export default function InvoiceSummary({ onPrint }) {
           </h2>
         </div>
 
-        {/* Subtotal + Adjustments */}
+        {/* Controls */}
         <div className="space-y-4 px-5 py-4">
-          {/* Subtotal */}
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-slate-500">Subtotal</span>
-            <span className="text-sm font-medium whitespace-nowrap tabular-nums text-slate-900">
-              {invoice.currency.symbol} {formatCurrency(subtotal)}
-            </span>
-          </div>
+          {/* Overall invoice discount */}
+          {invoiceDiscountVisible ? (
+            <div className={DISCOUNT_CARD_CLASS}>
+              <p className={SECTION_LABEL}>Invoice Discount</p>
 
-          {/* Adjustments */}
-          <div className="space-y-3">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-              Adjustments
-            </p>
+              <Input
+                type="text"
+                placeholder="Discount name"
+                value={invoice.invoiceDiscountLabel ?? ""}
+                onChange={(e) =>
+                  updateInvoice("invoiceDiscountLabel", e.target.value)
+                }
+                aria-label="Invoice discount name"
+                className="h-9 border-slate-200 bg-white text-sm shadow-none focus-visible:ring-blue-400"
+              />
 
-            <AddAdjustmentButtons
-              onAdd={addAdjustment}
-              disabled={!canAddAdjustments}
-            />
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <select
+                    value={
+                      invoice.discountType === "percent" ? "percent" : "fixed"
+                    }
+                    onChange={(e) =>
+                      handleInvoiceDiscountModeChange(e.target.value)
+                    }
+                    aria-label="Invoice discount mode"
+                    className={MODE_SELECT_CLASS}
+                  >
+                    <option value="fixed">Fixed</option>
+                    <option value="percent">Percentage</option>
+                  </select>
 
-            {adjustments.length > 0 && (
-              <div className="space-y-2.5">
-                {adjustments.map((row) => (
-                  <AdjustmentRow
-                    key={row.id}
-                    row={row}
-                    computed={rowComputed(row)}
-                    max={rowMax(row)}
-                    symbol={invoice.currency.symbol}
-                    onChange={(patch) => updateAdjustment(row.id, patch)}
-                    onRemove={() => removeAdjustment(row.id)}
+                  <InlineNumberInput
+                    value={Number(invoice.discount) || 0}
+                    max={discountBase}
+                    percent={invoice.discountType === "percent"}
+                    onChange={(num) => updateInvoice("discount", num)}
+                    suffix={
+                      invoice.discountType === "percent" ? "%" : symbol
+                    }
+                    ariaLabel="Invoice discount value"
                   />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={clearInvoiceDiscount}
+                  className="h-9 shrink-0 rounded-md px-3 text-sm font-medium text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 focus:outline-none focus-visible:ring-1 focus-visible:ring-slate-300"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <AddButton
+              onClick={() => setShowInvoiceDiscount(true)}
+              disabled={!hasValidAmount}
+              title={
+                !hasValidAmount ? "Invoice has no amount to discount" : undefined
+              }
+            >
+              Invoice Discount
+            </AddButton>
+          )}
+
+          {/* Offers */}
+          <div className="space-y-3 border-t border-slate-100 pt-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className={SECTION_LABEL}>Offers</p>
+              {!showOfferForm && (
+                <AddButton
+                  onClick={() => {
+                    resetOfferForm();
+                    setShowOfferForm(true);
+                  }}
+                  disabled={!canAddOffer}
+                  title={!canAddOffer ? "No offerable item amount" : undefined}
+                >
+                  Add Offer
+                </AddButton>
+              )}
+            </div>
+
+            {/* Offer form */}
+            {showOfferForm && (
+              <div className="space-y-3 rounded-xl border border-blue-100 bg-blue-50/40 p-4">
+                <div>
+                  <label
+                    htmlFor="offer-item"
+                    className="mb-1 block text-xs font-medium text-slate-500"
+                  >
+                    Item
+                  </label>
+                  <Select
+                    value={offerForm.appliesTo}
+                    onValueChange={(value) =>
+                      setOfferForm((form) => ({
+                        ...form,
+                        appliesTo: value,
+                        value: "",
+                      }))
+                    }
+                  >
+                    <SelectTrigger
+                      id="offer-item"
+                      className="h-9 w-full border-slate-200 bg-white"
+                    >
+                      <SelectValue placeholder="Select item" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {selectableItems.map((item, index) => (
+                        <SelectItem
+                          key={`${index}-${item.product}`}
+                          value={item.product}
+                          className="whitespace-normal"
+                        >
+                          {item.product}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="offer-name"
+                    className="mb-1 block text-xs font-medium text-slate-500"
+                  >
+                    Offer name
+                  </label>
+                  <Input
+                    id="offer-name"
+                    placeholder="e.g. Student Discount"
+                    value={offerForm.name}
+                    onChange={(e) =>
+                      setOfferForm((form) => ({ ...form, name: e.target.value }))
+                    }
+                    className="h-9 border-slate-200 bg-white text-sm shadow-none focus-visible:ring-blue-400"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label
+                      htmlFor="offer-type"
+                      className="mb-1 block text-xs font-medium text-slate-500"
+                    >
+                      Type
+                    </label>
+                    <select
+                      id="offer-type"
+                      value={offerForm.type}
+                      onChange={(e) =>
+                        setOfferForm((form) => ({
+                          ...form,
+                          type: e.target.value,
+                          value: "",
+                        }))
+                      }
+                      className="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                    >
+                      <option value="percent">Percentage</option>
+                      <option value="fixed">Fixed</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="offer-value"
+                      className="mb-1 block text-xs font-medium text-slate-500"
+                    >
+                      Value
+                    </label>
+                    <div className="relative">
+                      <Input
+                        id="offer-value"
+                        type="number"
+                        inputMode="decimal"
+                        min={0}
+                        max={offerForm.type === "percent" ? 100 : undefined}
+                        placeholder={
+                          !offerForm.appliesTo
+                            ? "Select item first"
+                            : offerForm.type === "percent"
+                              ? "e.g. 10"
+                              : "Amount"
+                        }
+                        disabled={!offerForm.appliesTo}
+                        value={offerForm.value}
+                        onChange={(e) => {
+                          const next = clampNumber(
+                            e.target.value,
+                            offerForm.type === "percent",
+                            offerForm.type === "fixed" && targetLineTotal > 0
+                              ? targetLineTotal
+                              : undefined,
+                          );
+                          if (next !== null) {
+                            setOfferForm((form) => ({ ...form, value: next }));
+                          }
+                        }}
+                        className="h-9 border-slate-200 bg-white pr-7 text-right text-sm shadow-none focus-visible:ring-blue-400"
+                      />
+                      <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-slate-400">
+                        {offerForm.type === "percent" ? "%" : symbol}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-0.5">
+                  <Button
+                    size="sm"
+                    onClick={handleSaveOffer}
+                    className="h-8 bg-blue-600 px-3 text-xs hover:bg-blue-700"
+                  >
+                    <Check className="mr-1 h-3 w-3" />
+                    {editingOfferIndex !== null ? "Update" : "Save"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={resetOfferForm}
+                    className="h-8 px-3 text-xs text-slate-500 hover:text-slate-800"
+                  >
+                    <X className="mr-1 h-3 w-3" />
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Empty state */}
+            {offers.length === 0 && !showOfferForm && (
+              <p className="py-2 text-center text-xs text-slate-400">
+                No offers added yet
+              </p>
+            )}
+
+            {/* Offers list */}
+            {offers.map((offer, index) => {
+              const item = selectableItems.find(
+                (i) => i.product === offer.appliesTo,
+              );
+              const lineTotal = item
+                ? (Number(item.qty) || 0) * (Number(item.rate) || 0)
+                : 0;
+
+              return (
+                <div
+                  key={offer.id ?? `offer-${index}`}
+                  className={DISCOUNT_CARD_CLASS}
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-800">
+                      {offer.name}
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-slate-500">
+                      Off — {offer.appliesTo}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={offer.type === "fixed" ? "fixed" : "percent"}
+                        onChange={(e) =>
+                          handleOfferTypeChange(index, e.target.value)
+                        }
+                        aria-label={`Type for ${offer.name}`}
+                        className={MODE_SELECT_CLASS}
+                      >
+                        <option value="fixed">Fixed</option>
+                        <option value="percent">Percentage</option>
+                      </select>
+
+                      <InlineNumberInput
+                        value={Number(offer.value) || 0}
+                        max={lineTotal > 0 ? lineTotal : undefined}
+                        percent={offer.type === "percent"}
+                        onChange={(num) => handleOfferValueSave(index, num)}
+                        suffix={offer.type === "percent" ? "%" : symbol}
+                        ariaLabel={`Value for ${offer.name}`}
+                      />
+                    </div>
+
+                    <div className="flex shrink-0 items-center gap-1">
+                      <button
+                        type="button"
+                        title="Edit offer"
+                        onClick={() => handleEditOffer(index)}
+                        className="rounded-md p-2 text-slate-400 transition-colors hover:bg-blue-50 hover:text-blue-600 focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-400"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        title="Delete offer"
+                        onClick={() => handleDeleteOffer(index)}
+                        className="rounded-md p-2 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 focus:outline-none focus-visible:ring-1 focus-visible:ring-slate-300"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Item price progression after offers (display only) */}
+            {offerProgressions.length > 0 && (
+              <div className="space-y-3 border-t border-slate-100 pt-3">
+                <p className={SECTION_LABEL}>Item Price After Offers</p>
+                {offerProgressions.map((progression, pIndex) => (
+                  <div
+                    key={`${progression.product}-${pIndex}`}
+                    className="rounded-xl border border-slate-200/80 bg-white px-4 py-3"
+                  >
+                    <p className="text-sm font-semibold text-slate-800">
+                      {progression.product}
+                    </p>
+
+                    <div className="mt-2">
+                      <PriceRow
+                        label="Original price"
+                        amount={progression.original}
+                        symbol={symbol}
+                      />
+                    </div>
+
+                    <div className="mt-2 space-y-2">
+                      {progression.steps.map((step, sIndex) => {
+                        const isLast =
+                          sIndex === progression.steps.length - 1;
+                        return (
+                          <div key={`${step.index}-${sIndex}`}>
+                            <PriceRow
+                              label={step.name}
+                              amount={step.amount}
+                              symbol={symbol}
+                              discount
+                            />
+                            <div className="mt-1">
+                              <PriceRow
+                                label={isLast ? "After discounts" : "After offer"}
+                                amount={step.after}
+                                symbol={symbol}
+                                strong={isLast}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
           </div>
         </div>
-
-        {/* Calculation breakdown */}
-        {breakdownSteps.length > 0 && (
-          <div className="space-y-1.5 border-t border-slate-100 px-5 py-3.5">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-              Calculation
-            </p>
-            <div className="space-y-1">
-              {breakdownSteps.map((step) => (
-                <div key={`amt-${step.id}`} className="space-y-1">
-                  <div className="flex items-center justify-between gap-3 text-[12px]">
-                    <span className="min-w-0 truncate text-slate-500">
-                      {step.label}
-                    </span>
-                    <span className="font-medium whitespace-nowrap tabular-nums text-slate-700">
-                      −{invoice.currency.symbol} {formatCurrency(step.amount)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3 text-[12px]">
-                    <span className="min-w-0 truncate text-slate-400">
-                      After {step.label}
-                    </span>
-                    <span className="font-medium whitespace-nowrap tabular-nums text-slate-600">
-                      {invoice.currency.symbol} {formatCurrency(step.after)}
-                    </span>
-                  </div>
-                </div>
-              ))}
-              <div className="mt-1 flex items-center justify-between gap-3 border-t border-slate-100 pt-1.5 text-[12px]">
-                <span className="font-medium text-slate-700">Final Total</span>
-                <span className="font-semibold whitespace-nowrap tabular-nums text-slate-900">
-                  {invoice.currency.symbol} {formatCurrency(total)}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Total */}
+        {/* Totals */}
         <div className="border-t border-slate-100 bg-slate-50/80 px-5 py-4">
-          <div className="flex items-end justify-between gap-3">
+          {/* Subtotal */}
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-slate-500">Subtotal</span>
+            <span className="text-sm font-medium whitespace-nowrap tabular-nums text-slate-900">
+              {symbol} {formatCurrency(subtotal)}
+            </span>
+          </div>
+
+          {/* Discount breakdown */}
+          {showBreakdown && (
+            <div className="mt-3 space-y-2.5">
+              {itemDiscountsTotal > 0 && (
+                <BreakdownRow
+                  label={invoice.itemDiscountLabel || "Item Discounts"}
+                  amount={itemDiscountsTotal}
+                  symbol={symbol}
+                />
+              )}
+
+              {offers.map((offer, index) => {
+                const amount = offerAmounts[index] || 0;
+                if (amount <= 0) return null;
+                return (
+                  <OfferBreakdownRow
+                    key={offer.id ?? `offer-${index}`}
+                    name={offer.name}
+                    target={offer.appliesTo}
+                    amount={amount}
+                    symbol={symbol}
+                  />
+                );
+              })}
+
+              {discountAmount > 0 && (
+                <BreakdownRow
+                  label={invoice.invoiceDiscountLabel || "Discount"}
+                  amount={discountAmount}
+                  symbol={symbol}
+                />
+              )}
+            </div>
+          )}
+
+          {/* Total Discounts */}
+          {totalDiscounts > 0 && (
+            <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-200 pt-3">
+              <span className="text-[13px] font-medium text-slate-600">
+                Total Discounts
+              </span>
+              <span className="text-[13px] font-semibold whitespace-nowrap tabular-nums text-rose-600">
+                − {symbol} {formatCurrency(totalDiscounts)}
+              </span>
+            </div>
+          )}
+
+          {/* Total */}
+          <div className="mt-3 flex items-end justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[12px] font-semibold uppercase tracking-wider text-slate-700">
                 Total
@@ -512,7 +1042,7 @@ export default function InvoiceSummary({ onPrint }) {
               </p>
             </div>
             <p className="text-2xl font-bold whitespace-nowrap tabular-nums leading-none text-slate-900">
-              {invoice.currency.symbol} {formatCurrency(total)}
+              {symbol} {formatCurrency(total)}
             </p>
           </div>
         </div>
