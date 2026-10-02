@@ -3,15 +3,8 @@ import { formatFirestoreDate } from "@/utils/dateUtils";
 import ColorAlternatingText from "./ColorAlternatingText";
 
 /**
- * Adjustable "knobs" used to balance the left column against the right
- * reference column, identified by data attributes on the left-side elements.
- *
- *  - data-sec-gap → section spacing  (Business heading top margin)
- *  - data-mb-gap  → paragraph/heading bottom margins
- *  - data-lh      → line-height (text lines and headings)
- *
- * Each knob starts at its natural computed base and can grow up to
- * base + maxAdd px. Higher weight = absorbs more of the delta.
+ * Adjustable "knobs" used to balance the left column against the
+ * right payment column.
  */
 const TUNING_KNOBS = [
   { attr: "data-sec-gap", prop: "marginTop", weight: 3, maxAdd: 20 },
@@ -21,8 +14,10 @@ const TUNING_KNOBS = [
 
 /** Stop once within this many px of the reference height. */
 const TOLERANCE = 3;
-/** Max each knob may grow per iteration (keeps the adjustment gradual). */
+
+/** Max each knob may grow per iteration. */
 const MAX_STEP = 2;
+
 /** Hard ceiling so the loop can never run away. */
 const MAX_ITERS = 24;
 
@@ -38,18 +33,20 @@ export default function BillingInfo({ invoice = {} }) {
     const right = rightRef.current;
 
     if (!left || !right) {
-      // Clean up any previously applied inline styles
       if (appliedRef.current) {
         appliedRef.current.forEach(({ el, prop }) => {
           el.style[prop] = "";
         });
+
         appliedRef.current = null;
       }
+
       return;
     }
 
-    // --- Step 1: Discover adjustable knobs in the left column ---
+    // Find all adjustable elements in the left column.
     const knobs = [];
+
     for (const cfg of TUNING_KNOBS) {
       left.querySelectorAll(`[${cfg.attr}]`).forEach((el) => {
         knobs.push({
@@ -63,118 +60,149 @@ export default function BillingInfo({ invoice = {} }) {
 
     if (knobs.length === 0) return;
 
-    const touched = new Map(); // el -> Set of applied props
+    const touched = new Map();
+
     const mark = (el, prop) => {
-      if (!touched.has(el)) touched.set(el, new Set());
+      if (!touched.has(el)) {
+        touched.set(el, new Set());
+      }
+
       touched.get(el).add(prop);
     };
+
     const reset = () => {
       for (const [el, props] of touched) {
-        props.forEach((p) => {
-          el.style[p] = "";
+        props.forEach((prop) => {
+          el.style[prop] = "";
         });
       }
+
       touched.clear();
     };
 
-    // Clear any previous adjustments so we measure natural heights
+    // Reset previous adjustments before measuring natural height.
     reset();
 
-    // Read each knob's natural base from the computed style (its Tailwind class)
-    for (const k of knobs) {
-      k.base = parseFloat(getComputedStyle(k.el)[k.prop]) || 0;
+    // Read the natural values from the computed styles.
+    for (const knob of knobs) {
+      knob.base = parseFloat(getComputedStyle(knob.el)[knob.prop]) || 0;
     }
 
-    const currentAdd = new Map(knobs.map((k) => [k, 0]));
+    const currentAdd = new Map(knobs.map((knob) => [knob, 0]));
 
-    // --- Step 2: Iteratively nudge knobs until the left column matches the
-    // right reference column, re-measuring after every adjustment ---
     const rightHeight = right.getBoundingClientRect().height;
+
     let iterations = 0;
 
     for (;;) {
       const leftHeight = left.getBoundingClientRect().height;
       const delta = rightHeight - leftHeight;
 
-      // Close enough (or left already matches/exceeds right)
+      // Already close enough.
       if (Math.abs(delta) <= TOLERANCE) break;
+
+      // Safety limit.
       if (iterations >= MAX_ITERS) break;
+
       iterations += 1;
 
-      // Only knobs that still have budget can grow this round
-      const eligible = knobs.filter((k) => currentAdd.get(k) < k.maxAdd - 0.5);
+      // Only use knobs that still have available budget.
+      const eligible = knobs.filter(
+        (knob) => currentAdd.get(knob) < knob.maxAdd - 0.5,
+      );
+
       if (eligible.length === 0) break;
 
-      const totalWeight = eligible.reduce((sum, k) => sum + k.weight, 0);
+      const totalWeight = eligible.reduce(
+        (sum, knob) => sum + knob.weight,
+        0,
+      );
 
-      // This iteration's budget — a small gradual step toward the goal
       let budget = Math.min(MAX_STEP, delta);
 
-      for (const k of eligible) {
+      for (const knob of eligible) {
         if (budget <= 0) break;
-        const room = k.maxAdd - currentAdd.get(k);
+
+        const room = knob.maxAdd - currentAdd.get(knob);
+
         const share = Math.min(
-          (k.weight / totalWeight) * MAX_STEP,
+          (knob.weight / totalWeight) * MAX_STEP,
           room,
           budget,
         );
 
-        k.el.style[k.prop] = `${k.base + currentAdd.get(k) + share}px`;
-        mark(k.el, k.prop);
-        currentAdd.set(k, currentAdd.get(k) + share);
+        knob.el.style[knob.prop] = `${
+          knob.base + currentAdd.get(knob) + share
+        }px`;
+
+        mark(knob.el, knob.prop);
+
+        currentAdd.set(
+          knob,
+          currentAdd.get(knob) + share,
+        );
+
         budget -= share;
       }
     }
 
-    // Record everything we touched so styles can be reset on cleanup
-    appliedRef.current = [...touched.entries()].flatMap(([el, props]) =>
-      [...props].map((prop) => ({ el, prop })),
+    // Remember styles that were modified.
+    appliedRef.current = [...touched.entries()].flatMap(
+      ([el, props]) =>
+        [...props].map((prop) => ({
+          el,
+          prop,
+        })),
     );
 
-    // Cleanup function
+    // Cleanup.
     return () => {
       if (appliedRef.current) {
         appliedRef.current.forEach(({ el, prop }) => {
           el.style[prop] = "";
         });
+
         appliedRef.current = null;
       }
     };
   }, [hasPayment, invoice]);
 
   return (
-    <section className="px-8 py-2 md:px-14">
-      {/* Date sits above both columns */}
-      <h3 className="text-[12px] font-bold uppercase tracking-widest text-slate-800">
+    <section className="px-8 py-3 md:px-14">
+      {/* Date */}
+      <h3 className="text-[13px] font-bold uppercase tracking-widest text-slate-800">
         Date:
-        <span className="ml-2 text-[12px] font-bold normal-case">
+        <span className="ml-2 text-[13px] font-bold normal-case">
           {formatFirestoreDate(invoice.invoiceDate)}
         </span>
       </h3>
 
-      <div className="mt-2 flex items-start justify-between gap-8">
+      <div className="mt-3 flex items-start justify-between gap-8">
+        {/* Left — Billing Information */}
         <div ref={leftRef} className="flex min-w-0 flex-1 flex-col">
           <div>
-            <h4 className="text-sm font-bold uppercase tracking-[1px] text-black">
+            <h4 className="text-base font-bold uppercase tracking-[1px] text-black">
               Invoice To:
             </h4>
 
+            {/* Business Name */}
             <h2
               data-mb-gap
               data-lh
-              className="mb-0.5 mt-1 text-lg font-bold leading-6 text-slate-900"
+              className="mb-1 mt-1 text-xl font-bold leading-7 text-slate-900"
             >
               {invoice.businessName && (
                 <ColorAlternatingText text={invoice.businessName} />
               )}
             </h2>
 
+            {/* Contact Person */}
             {invoice.customer && (
               <div>
                 <h2
                   data-mb-gap
                   data-lh
-                  className="mb-0 mt-2 text-xs leading-4 text-slate-900"
+                  className="mb-0 mt-2 text-sm leading-5 text-slate-900"
                 >
                   <span className="font-bold">Contact Person:</span>{" "}
                   {invoice.customer}
@@ -182,21 +210,44 @@ export default function BillingInfo({ invoice = {} }) {
               </div>
             )}
 
+            {/* Phone */}
             {invoice.phoneNo && (
-              <p data-mb-gap data-lh className="mb-0 text-xs text-black">
-                <span className="font-bold">Business Phone No:</span> {invoice.phoneNo}
+              <p
+                data-mb-gap
+                data-lh
+                className="mb-0 text-sm leading-5 text-black"
+              >
+                <span className="font-bold">
+                  Business Phone No:
+                </span>{" "}
+                {invoice.phoneNo}
               </p>
             )}
 
+            {/* Email */}
             {invoice.businessEmail && (
-              <p data-mb-gap data-lh className="mb-0 text-xs text-black">
-                <span className="font-bold">Business Email:</span> {invoice.businessEmail}
+              <p
+                data-mb-gap
+                data-lh
+                className="mb-0 text-sm leading-5 text-black"
+              >
+                <span className="font-bold">
+                  Business Email:
+                </span>{" "}
+                {invoice.businessEmail}
               </p>
             )}
 
+            {/* Address */}
             {invoice.businessAddress && (
-              <p data-mb-gap data-lh className="mb-0 text-xs text-black">
-                <span className="font-bold">Business Address:</span>{" "}
+              <p
+                data-mb-gap
+                data-lh
+                className="mb-0 text-sm leading-5 text-black"
+              >
+                <span className="font-bold">
+                  Business Address:
+                </span>{" "}
                 {invoice.businessAddress}
               </p>
             )}
@@ -210,6 +261,7 @@ export default function BillingInfo({ invoice = {} }) {
               <h4 className="mb-.5 text-sm font-bold uppercase tracking-widest text-black">
                 Payment Method
               </h4>
+
               {invoice.payment.startsWith("http://") ||
               invoice.payment.startsWith("https://") ? (
                 <a
@@ -223,25 +275,24 @@ export default function BillingInfo({ invoice = {} }) {
               ) : (
                 <div
                   className="
-    text-sm
-    text-black
-    // leading-6
+                    text-sm
+                    text-black
 
-    [&_p]:m-0
-    [&_p]:mb-0
-    [&_p]:break-words
+                    [&_p]:m-0
+                    [&_p]:mb-0
+                    [&_p]:break-words
 
-    [&_strong]:font-semibold
-    [&_a]:text-blue-600
-    [&_a]:underline
+                    [&_strong]:font-semibold
+                    [&_a]:text-blue-600
+                    [&_a]:underline
 
-    [&_ul]:list-disc
-    [&_ul]:pl-5
-    [&_ol]:list-decimal
-    [&_ol]:pl-5
-    [&_li]:mb-1
-    [&_*]:!font-[inherit]
-  "
+                    [&_ul]:list-disc
+                    [&_ul]:pl-5
+                    [&_ol]:list-decimal
+                    [&_ol]:pl-5
+                    [&_li]:mb-1
+                    [&_*]:!font-[inherit]
+                  "
                   dangerouslySetInnerHTML={{
                     __html: invoice.payment,
                   }}
