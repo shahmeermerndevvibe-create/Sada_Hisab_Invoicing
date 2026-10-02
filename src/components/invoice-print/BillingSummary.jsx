@@ -104,7 +104,7 @@ export default function BillingSummary({
         {/* Total Cost */}
         <div className="ml-auto mt-4 w-full max-w-[320px] shrink-0">
           {/* Subtotal */}
-          <div className="mb-2 flex w-full items-center justify-between rounded px-4 py-2 text-black">
+          <div className="mb-2 flex w-full items-center justify-between rounded py-0.5 pl-8 pr-4 text-black">
             <span className="text-[14px] font-bold leading-none">
               Subtotal:
             </span>
@@ -117,9 +117,9 @@ export default function BillingSummary({
 
           {/* Item Discounts */}
           {hasItemDiscounts && (
-            <div className="mb-2 flex w-full items-center justify-between rounded px-4 py-2 text-black">
+            <div className="mb-2 flex w-full items-center justify-between rounded py-0.5 pl-8 pr-4 text-black">
               <span className="text-[12px] leading-none">
-                {invoice.itemDiscountLabel || "Item Discounts"}
+                {invoice.itemDiscountLabel || "Item Discounts"}:
               </span>
 
               <span className="whitespace-nowrap text-[16px] leading-none">
@@ -144,7 +144,7 @@ export default function BillingSummary({
             return (
               <div
                 key={row.id ?? `${row.type}-${idx}`}
-                className="mb-2 flex w-full items-center justify-between rounded px-4 py-2 text-black"
+                className="mb-2 flex w-full items-center justify-between rounded py-0.5 pl-8 pr-4 text-black"
               >
                 <span className="text-[12px] leading-none">
                   {label}
